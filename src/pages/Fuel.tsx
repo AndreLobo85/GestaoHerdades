@@ -83,7 +83,7 @@ export default function Fuel() {
                     <input type="number" required min="0" step="0.1" value={form.hours_or_km} onChange={e => setForm({ ...form, hours_or_km: e.target.value })} placeholder="0.0" className="input-field" />
                     <span style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e', fontSize: '0.75rem', fontWeight: 700 }}>H/KM</span>
                   </div></div>
-                <div><label className="text-label" style={{ display: 'block', marginBottom: '0.5rem', marginLeft: 4 }}>Litros Consumidos</label>
+                <div><label className="text-label" style={{ display: 'block', marginBottom: '0.5rem', marginLeft: 4 }}>Litros Abastecidos</label>
                   <div style={{ position: 'relative' }}>
                     <input type="number" required min="0.1" step="0.1" value={form.liters} onChange={e => setForm({ ...form, liters: e.target.value })} placeholder="0.00" className="input-field" />
                     <span style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e', fontSize: '0.75rem', fontWeight: 700 }}>L</span>
