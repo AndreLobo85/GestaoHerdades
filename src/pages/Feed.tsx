@@ -47,8 +47,6 @@ export default function Feed() {
     exportToCSV(`alimentacao_${y}_${m}`, ['Data', 'Item', 'Qtd', 'Un', 'Notas'], allMonth.map(f => [formatDate(f.date), f.feed_item?.name ?? '', String(f.quantity), f.feed_item?.unit ?? '', f.notes]))
   }
 
-  const weekSummary = allMonth.reduce<Record<string, { name: string; total: number }>>((a, l) => { const k = l.feed_item_id; if (!a[k]) a[k] = { name: l.feed_item?.name ?? '—', total: 0 }; a[k].total += l.quantity; return a }, {})
-  const topItem = Object.values(weekSummary).sort((a, b) => b.total - a.total)[0]
   const dayTotals = logs.reduce<Record<string, number>>((a, l) => { a[l.feed_item_id] = (a[l.feed_item_id] || 0) + l.quantity; return a }, {})
   const weekDays = ['SEG', 'TER', 'QUA', 'QUI', 'HOJE', 'SAB', 'DOM']
   const barHeights = [60, 75, 80, 70, 45, 0, 0]
@@ -72,45 +70,26 @@ export default function Feed() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }} className="feed-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Chart + stock alert */}
-          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '1.5rem' }} className="chart-grid">
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 className="font-display" style={{ fontWeight: 700 }}>Consumo Semanal (kg)</h3>
-                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }}></span>FENO</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--secondary)' }}></span>RACAO</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, height: 120, marginTop: '1rem' }}>
-                {weekDays.map((d, i) => (
-                  <div key={d} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, height: 100 }}>
-                      <div style={{ width: '80%', background: 'var(--primary)', borderRadius: '4px 4px 0 0', height: `${barHeights[i]}%`, minHeight: barHeights[i] > 0 ? 4 : 0 }}></div>
-                      <div style={{ width: '80%', background: 'var(--secondary)', borderRadius: '0 0 4px 4px', height: `${barHeights2[i]}%`, minHeight: barHeights2[i] > 0 ? 4 : 0 }}></div>
-                    </div>
-                    <span style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', color: i === 4 ? 'var(--on-surface)' : '#a8a29e' }}>{d}</span>
-                  </div>
-                ))}
+          {/* Chart */}
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 className="font-display" style={{ fontWeight: 700 }}>Consumo Semanal (kg)</h3>
+              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }}></span>FENO</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--secondary)' }}></span>RACAO</span>
               </div>
             </div>
-
-            {topItem ? (
-              <div style={{ background: 'var(--secondary)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <p className="text-label" style={{ color: 'var(--secondary-container)', marginBottom: '0.5rem' }}>Stock Critico</p>
-                  <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 800 }}>{topItem.name}</h3>
-                  <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--secondary-container)' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>warning</span>Apenas 12 sacos restantes
-                  </p>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, height: 120, marginTop: '1rem' }}>
+              {weekDays.map((d, i) => (
+                <div key={d} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, height: 100 }}>
+                    <div style={{ width: '80%', background: 'var(--primary)', borderRadius: '4px 4px 0 0', height: `${barHeights[i]}%`, minHeight: barHeights[i] > 0 ? 4 : 0 }}></div>
+                    <div style={{ width: '80%', background: 'var(--secondary)', borderRadius: '0 0 4px 4px', height: `${barHeights2[i]}%`, minHeight: barHeights2[i] > 0 ? 4 : 0 }}></div>
+                  </div>
+                  <span style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', color: i === 4 ? 'var(--on-surface)' : '#a8a29e' }}>{d}</span>
                 </div>
-                <button style={{ marginTop: '1rem', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', color: 'white', fontWeight: 700, padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>Encomendar Agora</button>
-              </div>
-            ) : (
-              <div style={{ background: 'var(--surface-low)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p className="text-muted" style={{ fontSize: '0.875rem' }}>Sem dados de stock</p>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
 
           {/* Daily composition */}
