@@ -128,6 +128,15 @@ export interface Expense {
   vehicle?: Vehicle
 }
 
+export interface RoleView {
+  id: string
+  role: string
+  view_key: string
+  view_label: string
+  view_icon: string
+  enabled: boolean
+}
+
 export interface FeedLog {
   id: string
   date: string

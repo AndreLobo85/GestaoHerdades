@@ -4,36 +4,41 @@ import { useAuth } from '../contexts/AuthContext'
 import UserProfileModal from './UserProfileModal'
 
 const allSideItems = [
-  { to: '/atividades', icon: 'timer', label: 'Horas/Atividades', adminOnly: false },
-  { to: '/gasoleo', icon: 'local_gas_station', label: 'Consumo Gasoleo', adminOnly: false },
-  { to: '/alimentacao', icon: 'agriculture', label: 'Alimentacao Animal', adminOnly: false },
-  { to: '/despesas', icon: 'receipt_long', label: 'Despesas', adminOnly: true },
-  { to: '/definicoes', icon: 'settings', label: 'Definicoes', adminOnly: true },
+  { to: '/atividades', icon: 'timer', label: 'Horas/Atividades', key: 'atividades' },
+  { to: '/gasoleo', icon: 'local_gas_station', label: 'Consumo Gasoleo', key: 'gasoleo' },
+  { to: '/alimentacao', icon: 'agriculture', label: 'Alimentacao Animal', key: 'alimentacao' },
+  { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas' },
+  { to: '/definicoes', icon: 'settings', label: 'Definicoes', key: 'definicoes' },
 ]
 
 const allTopItems = [
-  { to: '/', label: 'Dashboard', adminOnly: false },
-  { to: '/atividades', label: 'Horas/Atividades', adminOnly: false },
-  { to: '/gasoleo', label: 'Consumo Gasoleo', adminOnly: false },
-  { to: '/alimentacao', label: 'Alimentacao Animal', adminOnly: false },
+  { to: '/', label: 'Dashboard', key: 'dashboard' },
+  { to: '/atividades', label: 'Horas/Atividades', key: 'atividades' },
+  { to: '/gasoleo', label: 'Consumo Gasoleo', key: 'gasoleo' },
+  { to: '/alimentacao', label: 'Alimentacao Animal', key: 'alimentacao' },
 ]
 
 const allMobileItems = [
-  { to: '/', icon: 'dashboard', label: 'Painel', adminOnly: false },
-  { to: '/atividades', icon: 'history', label: 'Horas', adminOnly: false },
-  { to: '/gasoleo', icon: 'ev_station', label: 'Gasoleo', adminOnly: false },
-  { to: '/alimentacao', icon: 'pets', label: 'Alimentar', adminOnly: false },
-  { to: '/despesas', icon: 'receipt_long', label: 'Despesas', adminOnly: true },
-  { to: '/definicoes', icon: 'settings', label: 'Config', adminOnly: true },
+  { to: '/', icon: 'dashboard', label: 'Painel', key: 'dashboard' },
+  { to: '/atividades', icon: 'history', label: 'Horas', key: 'atividades' },
+  { to: '/gasoleo', icon: 'ev_station', label: 'Gasoleo', key: 'gasoleo' },
+  { to: '/alimentacao', icon: 'pets', label: 'Alimentar', key: 'alimentacao' },
+  { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas' },
+  { to: '/definicoes', icon: 'settings', label: 'Config', key: 'definicoes' },
 ]
 
 export default function Layout() {
-  const { isAdmin, profile } = useAuth()
+  const { isAdmin, profile, allowedViews } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
 
-  const sideItems = allSideItems.filter(i => !i.adminOnly || isAdmin)
-  const topItems = allTopItems.filter(i => !i.adminOnly || isAdmin)
-  const mobileItems = allMobileItems.filter(i => !i.adminOnly || isAdmin)
+  // Filter by allowed views from DB; if no views loaded yet, admins see all, users see basics
+  const canSee = (key: string) => {
+    if (allowedViews.length > 0) return allowedViews.includes(key)
+    return isAdmin || !['despesas', 'definicoes'].includes(key)
+  }
+  const sideItems = allSideItems.filter(i => canSee(i.key))
+  const topItems = allTopItems.filter(i => canSee(i.key))
+  const mobileItems = allMobileItems.filter(i => canSee(i.key))
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)

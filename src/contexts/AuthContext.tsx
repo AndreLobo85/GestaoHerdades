@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { Profile } from '../types/database'
+import type { Profile, RoleView } from '../types/database'
 
 interface AuthContextType {
   session: Session | null
@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean
   isAdmin: boolean
   isPending: boolean
+  allowedViews: string[]
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [allowedViews, setAllowedViews] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId: string) => {
@@ -35,6 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
       if (data && !error) {
         setProfile(data as Profile)
+        // Fetch allowed views for this role
+        const { data: views } = await supabase
+          .from('role_views')
+          .select('view_key')
+          .eq('role', (data as Profile).role)
+          .eq('enabled', true)
+        setAllowedViews((views as RoleView[] ?? []).map(v => v.view_key))
         return
       }
       await new Promise(r => setTimeout(r, 500))
@@ -115,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       isAdmin: profile?.role === 'admin',
       isPending: profile?.status === 'pending',
+      allowedViews,
       signIn,
       signUp,
       signOut,
