@@ -231,45 +231,50 @@ export default function Activities() {
                     outline: sel ? '2.5px solid #ffb783' : 'none', outlineOffset: -2,
                     transition: 'all 0.15s', minHeight: 0,
                     display: 'flex', flexDirection: 'column',
-                    position: 'relative', overflow: 'hidden',
-                    background: hasActs ? 'transparent' : 'white',
+                    overflow: 'hidden', background: 'white',
+                    textAlign: 'left',
                   }}>
-                  {/* Color fill — stacked bands that fill the entire cell */}
-                  {hasActs && (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
-                      {typeEntries.map(([typeName]) => (
-                        <div key={typeName} style={{ flex: 1, background: getTypeColor(typeName) + '25' }} />
-                      ))}
-                    </div>
-                  )}
-                  {/* Content overlay */}
-                  <div style={{ position: 'relative', zIndex: 1, padding: '0.25rem 0.375rem', display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
-                    {/* Day number */}
-                    <div style={{ marginBottom: hasActs ? 3 : 0 }}>
+                  {hasActs ? (
+                    /* Filled cell: day number on top, then each type gets its own color band */
+                    <>
+                      {/* Day number bar */}
+                      <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.85)', width: '100%', flexShrink: 0 }}>
+                        {today ? (
+                          <span style={{ background: 'var(--primary)', color: 'white', width: 20, height: 20, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.625rem', fontWeight: 700 }}>{day}</span>
+                        ) : (
+                          <span style={{ fontWeight: 800, color: sel ? 'var(--primary)' : '#1a1a1a', fontSize: '0.75rem' }}>{day}</span>
+                        )}
+                      </div>
+                      {/* Color bands — each fills equal portion of remaining space */}
+                      {typeEntries.slice(0, 4).map(([typeName, hours]) => {
+                        const c = getTypeColor(typeName)
+                        return (
+                          <div key={typeName} style={{
+                            flex: 1, background: c + '28', width: '100%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '0 6px', minHeight: 0,
+                          }}>
+                            <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1 }}>{typeName}</span>
+                            <span style={{ fontSize: '0.5625rem', fontWeight: 800, color: c, flexShrink: 0, lineHeight: 1 }}>{hours}h</span>
+                          </div>
+                        )
+                      })}
+                      {typeEntries.length > 4 && (
+                        <div style={{ padding: '1px 6px', background: 'rgba(0,0,0,0.04)', width: '100%', flexShrink: 0 }}>
+                          <span style={{ fontSize: '0.5rem', color: '#555', fontWeight: 700 }}>+{typeEntries.length - 4}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Empty cell */
+                    <div style={{ padding: '0.25rem 0.375rem' }}>
                       {today ? (
                         <span style={{ background: 'var(--primary)', color: 'white', width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 700 }}>{day}</span>
                       ) : (
-                        <span style={{ fontWeight: hasActs ? 800 : 400, color: sel ? 'var(--primary)' : hasActs ? '#1a1a1a' : '#78716c', fontSize: '0.8125rem' }}>{day}</span>
+                        <span style={{ fontWeight: 400, color: sel ? 'var(--primary)' : '#78716c', fontSize: '0.8125rem' }}>{day}</span>
                       )}
                     </div>
-                    {/* Type labels inside the colored bands */}
-                    {hasActs && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                        {typeEntries.slice(0, 3).map(([typeName, hours]) => {
-                          const c = getTypeColor(typeName)
-                          return (
-                            <div key={typeName} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, padding: '1px 4px', borderRadius: 3, background: c + '30' }}>
-                              <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{typeName}</span>
-                              <span style={{ fontSize: '0.5625rem', fontWeight: 800, color: c, flexShrink: 0 }}>{hours}h</span>
-                            </div>
-                          )
-                        })}
-                        {typeEntries.length > 3 && (
-                          <span style={{ fontSize: '0.5rem', color: '#555', fontWeight: 700, paddingLeft: 2 }}>+{typeEntries.length - 3}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </button>
               )
             })}
