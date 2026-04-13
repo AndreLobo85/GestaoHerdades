@@ -114,11 +114,11 @@ export default function SettingsPage() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <button onClick={() => handleApproveUser(u.id, 'utilizador')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check</span>Utilizador
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check_circle</span>Aprovar como Utilizador
                       </button>
                       <button onClick={() => handleApproveUser(u.id, 'admin')}
                         style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700, border: 'none', borderRadius: 9999, padding: '0.375rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>shield_person</span>Admin
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>shield_person</span>Aprovar como Admin
                       </button>
                       <button onClick={() => handleRejectUser(u.id)}
                         style={{ background: '#ffdad6', color: 'var(--error)', fontWeight: 700, border: 'none', borderRadius: 9999, padding: '0.375rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
