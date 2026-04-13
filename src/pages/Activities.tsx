@@ -4,7 +4,7 @@ import { pt } from 'date-fns/locale'
 import { useEmployees, useActivityTypes } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
-import type { Activity } from '../types/database'
+import type { Activity, Profile } from '../types/database'
 
 export default function Activities() {
   const now = new Date()
@@ -13,12 +13,23 @@ export default function Activities() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState<number | null>(now.getDate())
-  const { data: employees } = useEmployees()
+  const { data: employees, fetch: refreshEmployees } = useEmployees()
   const { data: activityTypes } = useActivityTypes()
   const activeEmployees = employees.filter(e => e.active)
   const activeTypes = activityTypes.filter(t => t.active)
-  // Only show employees — activities.employee_id has FK to employees(id)
-  const allWorkers = activeEmployees.map(e => ({ id: e.id, name: e.name }))
+  const [profiles, setProfiles] = useState<Profile[]>([])
+
+  useEffect(() => {
+    supabase.from('profiles').select('*').eq('status', 'active').order('full_name', { ascending: true })
+      .then(({ data }) => { if (data) setProfiles(data as Profile[]) })
+  }, [])
+
+  // Merge employees + profiles (deduplicate by id)
+  const employeeIds = new Set(activeEmployees.map(e => e.id))
+  const allWorkers = [
+    ...activeEmployees.map(e => ({ id: e.id, name: e.name })),
+    ...profiles.filter(p => !employeeIds.has(p.id)).map(p => ({ id: p.id, name: p.full_name || p.email || 'Sem nome' })),
+  ]
   const [form, setForm] = useState({ employee_id: '', activity_type_id: '', hours: '', description: '' })
 
   const fetchActivities = useCallback(async () => {
@@ -45,8 +56,21 @@ export default function Activities() {
     setSubmitting(true)
     try {
       const d = `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`
+      // If selected worker is a profile (not in employees table), auto-create employee
+      let employeeId = form.employee_id
+      if (!employeeIds.has(employeeId)) {
+        const worker = allWorkers.find(w => w.id === employeeId)
+        if (worker) {
+          const { error: empErr } = await supabase.from('employees').upsert(
+            { id: employeeId, name: worker.name, role: 'geral', active: true } as any,
+            { onConflict: 'id' }
+          )
+          if (empErr) { setFormError(`Erro ao criar funcionario: ${empErr.message}`); return }
+          refreshEmployees()
+        }
+      }
       const { error } = await supabase.from('activities').insert({
-        employee_id: form.employee_id,
+        employee_id: employeeId,
         date: d,
         activity_type_id: form.activity_type_id,
         hours: parseFloat(form.hours),
