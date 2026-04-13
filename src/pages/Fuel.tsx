@@ -137,7 +137,7 @@ export default function Fuel() {
                 </button>
               </div>
               <table className="data-table"><thead><tr>
-                <th>Data</th><th>Veiculo</th><th>Tipo</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Litros</th><th>Registado por</th><th style={{ width: 40 }}></th>
+                <th>Data</th><th>Veiculo</th><th>Tipo</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Litros</th><th>Registado por</th>{isAdmin && <th style={{ width: 40 }}></th>}
               </tr></thead><tbody>
                 {logs.slice(0, 10).map(f => (
                   <tr key={f.id}>
@@ -147,7 +147,7 @@ export default function Fuel() {
                     <td style={{ textAlign: 'right', fontSize: '0.875rem', color: '#78716c' }}>{f.hours_or_km} km</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.875rem' }}>{f.liters}L</td>
                     <td style={{ fontSize: '0.8125rem', color: '#78716c' }}>{profile?.full_name || '—'}</td>
-                    <td><button onClick={() => handleDelete(f.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', borderRadius: '50%' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button></td>
+                    {isAdmin && <td><button onClick={() => handleDelete(f.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', borderRadius: '50%' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button></td>}
                   </tr>
                 ))}
               </tbody></table>

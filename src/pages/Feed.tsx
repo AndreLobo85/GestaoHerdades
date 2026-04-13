@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/ui/Modal'
-import { useFeedItems } from '../lib/store'
+import { useFeedItems, useProducts } from '../lib/store'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
-import type { FeedLog } from '../types/database'
+import type { FeedLog, Product } from '../types/database'
 
 export default function Feed() {
   const { isAdmin } = useAuth()
@@ -14,10 +14,12 @@ export default function Feed() {
   const [_loading, setLoading] = useState(true)
   const [itemModal, setItemModal] = useState(false)
   const { data: feedItems, insert: insertItem } = useFeedItems()
+  const { data: products, fetch: refetchProducts } = useProducts()
   const activeItems = feedItems.filter(i => i.active)
   const [quantities, setQuantities] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState('')
-  const [newItem, setNewItem] = useState({ name: '', unit: 'unidades' })
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const fetchDay = useCallback(async () => {
     setLoading(true)
@@ -34,23 +36,95 @@ export default function Feed() {
 
   useEffect(() => { fetchDay(); fetchMonth() }, [fetchDay, fetchMonth])
 
+  // Get products already linked to feed items
+  const linkedProductIds = feedItems.map(fi => fi.product_id).filter(Boolean)
+  const availableProducts = products.filter(p => p.active && !linkedProductIds.includes(p.id))
+
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
-    const ins = Object.entries(quantities).filter(([, q]) => parseFloat(q) > 0).map(([fid, q]) => ({ date: selectedDate, feed_item_id: fid, quantity: parseFloat(q), notes }))
-    if (!ins.length) return
-    await supabase.from('feed_logs').insert(ins as any); setQuantities({}); setNotes(''); fetchDay(); fetchMonth()
+    const entries = Object.entries(quantities).filter(([, q]) => parseFloat(q) > 0)
+    if (!entries.length) return
+    setSubmitting(true)
+
+    // Build feed log inserts
+    const ins = entries.map(([fid, q]) => ({ date: selectedDate, feed_item_id: fid, quantity: parseFloat(q), notes }))
+    const { data: insertedLogs, error: logError } = await supabase.from('feed_logs').insert(ins as any).select('id, feed_item_id, quantity') as { data: { id: string; feed_item_id: string; quantity: number }[] | null; error: any }
+
+    if (logError || !insertedLogs) { setSubmitting(false); return }
+
+    // For each entry with a linked product, create stock movement (saida) and update quantity
+    for (const log of insertedLogs) {
+      const feedItem = feedItems.find(fi => fi.id === log.feed_item_id)
+      if (!feedItem?.product_id) continue
+
+      const product = products.find(p => p.id === feedItem.product_id)
+      if (!product) continue
+
+      // Create stock movement
+      await supabase.from('stock_movements').insert({
+        product_id: feedItem.product_id,
+        type: 'saida',
+        quantity: log.quantity,
+        reason: 'Alimentacao animal',
+        feed_log_id: log.id,
+        notes: `Auto: ${feedItem.name} - ${log.quantity} ${feedItem.unit}`,
+        date: selectedDate,
+      } as any)
+
+      // Deduct from product current_quantity
+      const newQty = Math.max(0, product.current_quantity - log.quantity)
+      await supabase.from('products').update({ current_quantity: newQty } as never).eq('id', feedItem.product_id)
+    }
+
+    setQuantities({}); setNotes('')
+    setSubmitting(false)
+    refetchProducts()
+    fetchDay(); fetchMonth()
   }
-  const handleDelete = async (id: string) => { await supabase.from('feed_logs').delete().eq('id', id); fetchDay(); fetchMonth() }
-  const handleAddItem = async (ev: React.FormEvent) => { ev.preventDefault(); await insertItem({ name: newItem.name, unit: newItem.unit, active: true }); setNewItem({ name: '', unit: 'unidades' }); setItemModal(false) }
+
+  const handleDelete = async (id: string) => {
+    // Find the log to restore stock
+    const log = logs.find(l => l.id === id)
+    if (log) {
+      const feedItem = feedItems.find(fi => fi.id === log.feed_item_id)
+      if (feedItem?.product_id) {
+        const product = products.find(p => p.id === feedItem.product_id)
+        if (product) {
+          // Restore stock
+          const newQty = product.current_quantity + log.quantity
+          await supabase.from('products').update({ current_quantity: newQty } as never).eq('id', feedItem.product_id)
+          // Remove stock movement
+          await supabase.from('stock_movements').delete().eq('feed_log_id', id)
+        }
+      }
+    }
+    await supabase.from('feed_logs').delete().eq('id', id)
+    refetchProducts()
+    fetchDay(); fetchMonth()
+  }
+
+  const handleAddItem = async (ev: React.FormEvent) => {
+    ev.preventDefault()
+    if (!selectedProductId) return
+    const product = products.find(p => p.id === selectedProductId)
+    if (!product) return
+    await insertItem({ name: product.name, unit: product.unit, active: true, product_id: product.id } as any)
+    setSelectedProductId('')
+    setItemModal(false)
+  }
+
   const handleExport = () => {
     const [y, m] = selectedDate.split('-')
     exportToCSV(`alimentacao_${y}_${m}`, ['Data', 'Item', 'Qtd', 'Un', 'Notas'], allMonth.map(f => [formatDate(f.date), f.feed_item?.name ?? '', String(f.quantity), f.feed_item?.unit ?? '', f.notes]))
   }
 
   const dayTotals = logs.reduce<Record<string, number>>((a, l) => { a[l.feed_item_id] = (a[l.feed_item_id] || 0) + l.quantity; return a }, {})
-  const weekDays = ['SEG', 'TER', 'QUA', 'QUI', 'HOJE', 'SAB', 'DOM']
-  const barHeights = [60, 75, 80, 70, 45, 0, 0]
-  const barHeights2 = [30, 40, 35, 25, 20, 0, 0]
+
+  // Helper to get stock info for a feed item
+  const getStockInfo = (feedItem: { product_id: string | null }): Product | undefined => {
+    if (!feedItem.product_id) return undefined
+    return products.find(p => p.id === feedItem.product_id)
+  }
 
   return (
     <div>
@@ -70,27 +144,31 @@ export default function Feed() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }} className="feed-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Chart */}
-          <div className="card" style={{ padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 className="font-display" style={{ fontWeight: 700 }}>Consumo Semanal (kg)</h3>
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }}></span>FENO</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--secondary)' }}></span>RACAO</span>
+          {/* Stock alerts for feed items */}
+          {activeItems.some(item => {
+            const stock = getStockInfo(item)
+            return stock && stock.current_quantity <= stock.min_stock_alert
+          }) && (
+            <div className="card" style={{ padding: '1.25rem', border: '1px solid #f59e0b33', background: '#fef3c720' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#f59e0b' }}>warning</span>
+                <h4 style={{ fontWeight: 700, fontSize: '0.875rem', color: '#92400e' }}>Stock Baixo</h4>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {activeItems.filter(item => {
+                  const stock = getStockInfo(item)
+                  return stock && stock.current_quantity <= stock.min_stock_alert
+                }).map(item => {
+                  const stock = getStockInfo(item)!
+                  return (
+                    <span key={item.id} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem', borderRadius: 99, background: stock.current_quantity === 0 ? '#fee2e2' : '#fef9c3', color: stock.current_quantity === 0 ? '#991b1b' : '#92400e', fontWeight: 600 }}>
+                      {item.name}: {stock.current_quantity} {stock.unit}
+                    </span>
+                  )
+                })}
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, height: 120, marginTop: '1rem' }}>
-              {weekDays.map((d, i) => (
-                <div key={d} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, height: 100 }}>
-                    <div style={{ width: '80%', background: 'var(--primary)', borderRadius: '4px 4px 0 0', height: `${barHeights[i]}%`, minHeight: barHeights[i] > 0 ? 4 : 0 }}></div>
-                    <div style={{ width: '80%', background: 'var(--secondary)', borderRadius: '0 0 4px 4px', height: `${barHeights2[i]}%`, minHeight: barHeights2[i] > 0 ? 4 : 0 }}></div>
-                  </div>
-                  <span style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', color: i === 4 ? 'var(--on-surface)' : '#a8a29e' }}>{d}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* Daily composition */}
           <div className="card" style={{ padding: '2rem' }}>
@@ -106,42 +184,63 @@ export default function Feed() {
               )}
             </div>
             <form onSubmit={handleSubmit}>
-              {activeItems.map(item => (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid var(--surface-mid)' }}>
-                  <div className="icon-circle" style={{ background: 'var(--surface-mid)', flexShrink: 0 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--on-surface-variant)' }}>inventory_2</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{item.name}</p>
-                    <p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>Unidade: {item.unit}</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <button type="button" className="stepper-btn" onClick={() => { const c = parseFloat(quantities[item.id] || '0'); if (c > 0) setQuantities({ ...quantities, [item.id]: String(c - 1) }) }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
-                    </button>
-                    <input type="number" min="0" step="0.5" value={quantities[item.id] || ''} onChange={e => setQuantities({ ...quantities, [item.id]: e.target.value })} placeholder="0"
-                      className="input-field" style={{ width: 64, textAlign: 'center', padding: '0.5rem' }} />
-                    <button type="button" className="stepper-btn" onClick={() => { const c = parseFloat(quantities[item.id] || '0'); setQuantities({ ...quantities, [item.id]: String(c + 1) }) }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-                    </button>
-                  </div>
-                  {dayTotals[item.id] ? (
-                    <div style={{ textAlign: 'right', minWidth: 70 }}>
-                      <p className="text-label" style={{ fontSize: '0.5625rem' }}>Total</p>
-                      <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{dayTotals[item.id]} {item.unit}</p>
+              {activeItems.map(item => {
+                const stock = getStockInfo(item)
+                return (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid var(--surface-mid)' }}>
+                    <div className="icon-circle" style={{ background: 'var(--surface-mid)', flexShrink: 0 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--on-surface-variant)' }}>inventory_2</span>
                     </div>
-                  ) : <div style={{ minWidth: 70 }}></div>}
-                </div>
-              ))}
-              {activeItems.length === 0 && <p style={{ textAlign: 'center', color: '#a8a29e', padding: '2rem', fontSize: '0.875rem' }}>Nenhum item configurado.</p>}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{item.name}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
+                        <p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>Unidade: {item.unit}</p>
+                        {stock && (
+                          <span style={{
+                            fontSize: '0.625rem',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontWeight: 600,
+                            background: stock.current_quantity <= stock.min_stock_alert ? (stock.current_quantity === 0 ? '#fee2e2' : '#fef9c3') : '#dcfce7',
+                            color: stock.current_quantity <= stock.min_stock_alert ? (stock.current_quantity === 0 ? '#991b1b' : '#92400e') : '#166534',
+                          }}>
+                            Stock: {stock.current_quantity} {stock.unit}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button type="button" className="stepper-btn" onClick={() => { const c = parseFloat(quantities[item.id] || '0'); if (c > 0) setQuantities({ ...quantities, [item.id]: String(c - 1) }) }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
+                      </button>
+                      <input type="number" min="0" step="0.5" value={quantities[item.id] || ''} onChange={e => setQuantities({ ...quantities, [item.id]: e.target.value })} placeholder="0"
+                        className="input-field" style={{ width: 64, textAlign: 'center', padding: '0.5rem' }} />
+                      <button type="button" className="stepper-btn" onClick={() => { const c = parseFloat(quantities[item.id] || '0'); setQuantities({ ...quantities, [item.id]: String(c + 1) }) }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                      </button>
+                    </div>
+                    {dayTotals[item.id] ? (
+                      <div style={{ textAlign: 'right', minWidth: 70 }}>
+                        <p className="text-label" style={{ fontSize: '0.5625rem' }}>Total</p>
+                        <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{dayTotals[item.id]} {item.unit}</p>
+                      </div>
+                    ) : <div style={{ minWidth: 70 }}></div>}
+                  </div>
+                )
+              })}
+              {activeItems.length === 0 && (
+                <p style={{ textAlign: 'center', color: '#a8a29e', padding: '2rem', fontSize: '0.875rem' }}>
+                  Nenhum item configurado. {isAdmin ? 'Clique em "Gerir Itens" para adicionar produtos do stock.' : 'Contacte um administrador.'}
+                </p>
+              )}
               <div style={{ marginTop: '1.5rem' }}>
                 <label className="text-label" style={{ display: 'block', marginBottom: '0.5rem', marginLeft: 4 }}>Notas de Observacao</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Ex: Adicionado suplemento vitaminico no lote da manha..." className="input-field" style={{ resize: 'none' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
                 <button type="button" onClick={() => { setQuantities({}); setNotes('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'var(--on-surface-variant)', fontSize: '0.875rem', padding: '0.75rem 1.25rem' }}>Cancelar</button>
-                <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.5rem' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>save</span>Submeter Registo
+                <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.5rem', opacity: submitting ? 0.6 : 1 }} disabled={submitting}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>save</span>{submitting ? 'A guardar...' : 'Submeter Registo'}
                 </button>
               </div>
             </form>
@@ -168,18 +267,40 @@ export default function Feed() {
         </div>
       </div>
 
-      <Modal open={itemModal} onClose={() => setItemModal(false)} title="Novo Item de Alimentacao">
-        <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div><label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Nome</label><input required value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} placeholder="Ex: Fardos de alfafa" className="input-field" /></div>
-          <div><label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Unidade</label>
-            <select value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} className="input-field">
-              <option value="unidades">Unidades</option><option value="kg">Kg</option><option value="sacos">Sacos</option><option value="fardos">Fardos</option><option value="bolas">Bolas</option><option value="litros">Litros</option>
-            </select></div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
-            <button type="button" onClick={() => setItemModal(false)} className="btn-ghost">Cancelar</button>
-            <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Guardar</button>
+      {/* Modal: Add feed item from products */}
+      <Modal open={itemModal} onClose={() => setItemModal(false)} title="Adicionar Item de Alimentacao">
+        {availableProducts.length > 0 ? (
+          <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Selecionar Produto do Stock</label>
+              <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="input-field" required>
+                <option value="">-- Escolha um produto --</option>
+                {availableProducts.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.unit}) — Stock: {p.current_quantity}</option>
+                ))}
+              </select>
+              <p style={{ fontSize: '0.6875rem', color: '#a8a29e', marginTop: 6, marginLeft: 4 }}>
+                Os itens de alimentacao vem dos produtos registados no Stock. Ao submeter um registo, o stock e automaticamente deduzido.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
+              <button type="button" onClick={() => setItemModal(false)} className="btn-ghost">Cancelar</button>
+              <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Adicionar</button>
+            </div>
+          </form>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#a8a29e', marginBottom: '0.75rem', display: 'block' }}>inventory_2</span>
+            <p style={{ fontSize: '0.875rem', color: '#a8a29e', marginBottom: '0.5rem' }}>
+              {products.filter(p => p.active).length === 0
+                ? 'Nenhum produto registado no Stock.'
+                : 'Todos os produtos do stock ja estao adicionados.'}
+            </p>
+            <p style={{ fontSize: '0.75rem', color: '#a8a29e' }}>
+              Adicione novos produtos na pagina de Stock ou nas Definicoes.
+            </p>
           </div>
-        </form>
+        )}
       </Modal>
 
       <style>{`

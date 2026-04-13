@@ -98,6 +98,9 @@ export interface FeedItem {
   name: string
   unit: string
   active: boolean
+  product_id: string | null
+  // joined
+  product?: Product
 }
 
 export type UserRole = 'admin' | 'utilizador'
@@ -193,6 +196,7 @@ export interface StockMovement {
   quantity: number
   reason: string
   general_expense_id: string | null
+  feed_log_id: string | null
   notes: string
   date: string
   created_by: string | null
