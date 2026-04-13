@@ -288,7 +288,29 @@ export default function Feed() {
                       <button type="button" onClick={async () => { await updateItem(item.id, { active: !item.active } as any) }} title={item.active ? 'Desativar' : 'Ativar'} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: item.active ? 'var(--primary)' : '#a8a29e' }}>{item.active ? 'visibility' : 'visibility_off'}</span>
                       </button>
-                      <button type="button" onClick={async () => { if (confirm('Remover "' + item.name + '" da lista de alimentacao?')) { await removeItem(item.id) } }} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                      <button type="button" onClick={async () => {
+                        if (!confirm('Remover "' + item.name + '" da lista de alimentacao?\nOs registos historicos deste item tambem serao eliminados.')) return
+                        // Delete associated feed logs first (and restore stock for each)
+                        const { data: itemLogs } = await supabase.from('feed_logs').select('id, quantity').eq('feed_item_id', item.id) as { data: { id: string; quantity: number }[] | null }
+                        if (itemLogs && itemLogs.length > 0) {
+                          // Restore stock for all logs of this item
+                          if (item.product_id) {
+                            const totalQty = itemLogs.reduce((sum, l) => sum + l.quantity, 0)
+                            const product = products.find(p => p.id === item.product_id)
+                            if (product) {
+                              await supabase.from('products').update({ current_quantity: product.current_quantity + totalQty } as never).eq('id', item.product_id)
+                            }
+                            // Delete stock movements linked to these logs
+                            for (const l of itemLogs) {
+                              await supabase.from('stock_movements').delete().eq('feed_log_id', l.id)
+                            }
+                          }
+                          // Delete feed logs
+                          await supabase.from('feed_logs').delete().eq('feed_item_id', item.id)
+                        }
+                        await removeItem(item.id)
+                        refetchProducts(); fetchDay(); fetchMonth()
+                      }} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--error)' }}>delete</span>
                       </button>
                     </div>
