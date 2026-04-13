@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/ui/Modal'
-import { useActivityTypes, useVehicles, useFeedItems } from '../lib/store'
+import { useActivityTypes, useVehicles, useFeedItems, useProducts } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import type { Vehicle, Profile, UserRole, RoleView } from '../types/database'
 
-type Tab = 'users' | 'roles' | 'activities' | 'vehicles' | 'feed'
+type Tab = 'users' | 'roles' | 'activities' | 'vehicles' | 'feed' | 'products'
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('users')
@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const activityTypes = useActivityTypes()
   const vehicles = useVehicles()
   const feedItems = useFeedItems()
+  const productsStore = useProducts()
 
   const [roleViews, setRoleViews] = useState<RoleView[]>([])
 
@@ -44,6 +45,7 @@ export default function SettingsPage() {
     { id: 'activities' as Tab, label: 'Atividades', icon: 'label', count: activityTypes.data.length, badge: 0 },
     { id: 'vehicles' as Tab, label: 'Veiculos', icon: 'agriculture', count: vehicles.data.length, badge: 0 },
     { id: 'feed' as Tab, label: 'Alimentacao', icon: 'grass', count: feedItems.data.length, badge: 0 },
+    { id: 'products' as Tab, label: 'Produtos', icon: 'inventory_2', count: productsStore.data.length, badge: 0 },
   ]
 
   const handleApproveUser = async (userId: string, role: UserRole) => {
@@ -322,11 +324,36 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Products tab */}
+      {tab === 'products' && (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          {productsStore.data.map(item => (
+            <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#fafaf9')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className="icon-circle" style={{ background: '#ecfccb' }}><span className="material-symbols-outlined" style={{ fontSize: 18, color: '#3a6843' }}>inventory_2</span></div>
+                <div>
+                  <p style={{ fontWeight: 600 }}>{item.name}</p>
+                  <p style={{ fontSize: '0.75rem', color: '#a8a29e' }}>Unidade: {item.unit} · Stock min: {item.min_stock_alert > 0 ? `${item.min_stock_alert} ${item.unit}` : 'Sem alerta'}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: item.active && item.min_stock_alert > 0 && item.current_quantity <= item.min_stock_alert ? '#dc2626' : 'var(--on-surface)' }}>{item.current_quantity} {item.unit}</span>
+                <button onClick={() => productsStore.update(item.id, { active: !item.active } as any)} className={item.active ? 'badge-green' : 'badge-muted'} style={{ cursor: 'pointer', border: 'none' }}>{item.active ? 'Ativo' : 'Inativo'}</button>
+                <button onClick={() => productsStore.remove(item.id)} style={{ padding: 6, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button>
+              </div>
+            </div>
+          ))}
+          {productsStore.data.length === 0 && <EmptyMsg icon="inventory_2" />}
+        </div>
+      )}
+
       {/* Modals */}
       {tab === 'users' && <AddUserModal open={modalOpen} onClose={() => setModalOpen(false)} onSaved={() => { setModalOpen(false); fetchUsers() }} />}
       {tab === 'activities' && <AddSimpleModal open={modalOpen} onClose={() => setModalOpen(false)} title="Nova Atividade" label="Nome" placeholder="Ex: Poda, Rega..." onSave={async n => { await activityTypes.insert({ name: n, active: true }); setModalOpen(false) }} />}
       {tab === 'vehicles' && <AddVehicleModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async v => { await vehicles.insert(v); setModalOpen(false) }} />}
       {tab === 'feed' && <AddFeedItemModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async (n, u) => { await feedItems.insert({ name: n, unit: u, active: true }); setModalOpen(false) }} />}
+      {tab === 'products' && <AddProductModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async (name, unit, minAlert) => { await productsStore.insert({ name, unit, min_stock_alert: minAlert, current_quantity: 0, active: true } as any); setModalOpen(false) }} />}
     </div>
   )
 }
@@ -575,6 +602,33 @@ function AddFeedItemModal({ open, onClose, onSave }: { open: boolean; onClose: (
             <option value="unidades">Unidades</option><option value="kg">Kg</option><option value="sacos">Sacos</option>
             <option value="fardos">Fardos</option><option value="bolas">Bolas</option><option value="litros">Litros</option>
           </select></div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
+          <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
+          <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Guardar</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function AddProductModal({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (name: string, unit: string, minAlert: number) => void }) {
+  const [name, setName] = useState('')
+  const [unit, setUnit] = useState('unidades')
+  const [minAlert, setMinAlert] = useState('')
+  return (
+    <Modal open={open} onClose={onClose} title="Novo Produto">
+      <form onSubmit={e => { e.preventDefault(); onSave(name, unit, parseFloat(minAlert) || 0); setName(''); setUnit('unidades'); setMinAlert('') }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div><label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Nome</label>
+          <input required value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Racao Vacada, Herbicida..." className="input-field" /></div>
+        <div><label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Unidade</label>
+          <select value={unit} onChange={e => setUnit(e.target.value)} className="input-field">
+            <option value="unidades">Unidades</option><option value="kg">Kg</option><option value="litros">Litros</option>
+            <option value="sacos">Sacos</option><option value="fardos">Fardos</option><option value="caixas">Caixas</option>
+            <option value="metros">Metros</option><option value="toneladas">Toneladas</option>
+          </select></div>
+        <div><label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Stock Minimo (alerta)</label>
+          <input type="number" min="0" step="0.1" value={minAlert} onChange={e => setMinAlert(e.target.value)} placeholder="0 (sem alerta)" className="input-field" />
+          <p style={{ fontSize: '0.625rem', color: '#a8a29e', marginTop: 4, marginLeft: 4 }}>Alerta quando stock ficar abaixo deste valor.</p></div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
           <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
           <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Guardar</button>
