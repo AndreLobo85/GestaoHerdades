@@ -237,8 +237,8 @@ export default function Activities() {
                   {hasActs ? (
                     /* Filled cell: day number on top, then each type gets its own color band */
                     <>
-                      {/* Day number bar */}
-                      <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.85)', width: '100%', flexShrink: 0 }}>
+                      {/* Day number bar — same color as first activity type */}
+                      <div style={{ padding: '2px 6px', background: getTypeColor(typeEntries[0][0]) + '28', width: '100%', flexShrink: 0 }}>
                         {today ? (
                           <span style={{ background: 'var(--primary)', color: 'white', width: 20, height: 20, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.625rem', fontWeight: 700 }}>{day}</span>
                         ) : (
