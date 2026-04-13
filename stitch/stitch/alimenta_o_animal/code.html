@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+
+<html lang="pt"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Registo de Alimentação Animal - AgroPrecision</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#b9ecbd",
+                    "inverse-on-surface": "#eff1f0",
+                    "on-tertiary-fixed": "#001e2f",
+                    "on-secondary": "#ffffff",
+                    "tertiary": "#24516d",
+                    "tertiary-container": "#3f6986",
+                    "on-tertiary-fixed-variant": "#1d4b67",
+                    "tertiary-fixed": "#c9e6ff",
+                    "on-surface-variant": "#44483c",
+                    "surface-tint": "#944a00",
+                    "on-primary-fixed-variant": "#713700",
+                    "on-background": "#191c1c",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-container": "#c9e6ff",
+                    "primary-fixed": "#ffdcc5",
+                    "surface-container": "#eceeed",
+                    "on-primary-container": "#ffdbc4",
+                    "on-primary-fixed": "#301400",
+                    "surface-container-low": "#f2f4f3",
+                    "on-primary": "#ffffff",
+                    "primary": "#793c00",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#a0d3a5",
+                    "inverse-primary": "#ffb783",
+                    "surface-container-highest": "#e1e3e2",
+                    "surface-bright": "#f8faf9",
+                    "secondary": "#3a6843",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#d8dad9",
+                    "background": "#f8faf9",
+                    "outline": "#74796b",
+                    "on-surface": "#191c1c",
+                    "outline-variant": "#c4c8b8",
+                    "error-container": "#ffdad6",
+                    "primary-fixed-dim": "#ffb783",
+                    "primary-container": "#9d4f00",
+                    "error": "#ba1a1a",
+                    "surface-container-high": "#e6e9e8",
+                    "secondary-fixed": "#bcefc0",
+                    "on-secondary-fixed-variant": "#22502d",
+                    "surface": "#f8faf9",
+                    "on-secondary-fixed": "#00210a",
+                    "on-secondary-container": "#3e6d47",
+                    "tertiary-fixed-dim": "#a1cced",
+                    "surface-variant": "#e1e3e2",
+                    "inverse-surface": "#2e3131",
+                    "on-error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-40 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md flex justify-between items-center px-6 py-3 w-full border-b border-stone-200/20">
+<div class="flex items-center gap-4">
+<span class="text-xl font-bold text-lime-900 dark:text-white tracking-tighter">AgroPrecision</span>
+<nav class="hidden md:flex gap-6 ml-8">
+<a class="text-stone-500 dark:text-stone-400 font-manrope text-sm font-semibold tracking-tight hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors px-2 py-1 rounded-lg" href="#">Horas</a>
+<a class="text-stone-500 dark:text-stone-400 font-manrope text-sm font-semibold tracking-tight hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors px-2 py-1 rounded-lg" href="#">Gasóleo</a>
+<a class="text-lime-700 dark:text-lime-400 font-bold border-b-2 border-lime-700 font-manrope text-sm tracking-tight px-2 py-1" href="#">Alimentar</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<button class="material-symbols-outlined text-stone-600 p-2 hover:bg-stone-50 rounded-full transition-colors">notifications</button>
+<button class="material-symbols-outlined text-stone-600 p-2 hover:bg-stone-50 rounded-full transition-colors">settings</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden ml-2">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="close-up portrait of a professional farmer in a sunlit field with soft bokeh background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZWJE7zqFy8vTZJkst-PWNJ3W9myg3JMzGrkztPADW6gKtnvfZxEtkHuH_QDfHpar7b0AdemIsMU7qFExCVi5Yk5yvnbzY3YXx3V_eVOkSeA6ggrGxhYuiZcqtWzxVjnXRAJ449HRRmEA8yrZvglkcL0lR1DaotCf82MlXq-KoHpVNFI-o0WpH2jBwSqKqsOAN1kEJEXXruJCfRW5GgCrbpjbt-EpKR7kyqThH41_nljnscW1k_Y1tfn7F4E7MFnFc7RMAN1nAyY0"/>
+</div>
+</div>
+</header>
+<div class="flex min-h-screen pt-16 pb-24 md:pb-0">
+<!-- SideNavBar (Desktop Only) -->
+<aside class="h-screen w-64 hidden md:flex flex-col border-r border-stone-200/50 bg-stone-50 dark:bg-stone-950 p-4 gap-2 sticky top-16">
+<div class="mb-6 px-2">
+<h2 class="text-lg font-black text-lime-900 dark:text-white">Gestão Agrícola</h2>
+<p class="text-stone-500 text-xs font-manrope">The Digital Agronomist</p>
+</div>
+<a class="flex items-center gap-3 p-3 text-stone-600 dark:text-stone-400 hover:text-lime-700 hover:translate-x-1 transition-transform duration-300 ease-out font-manrope text-sm" href="#">
+<span class="material-symbols-outlined">timer</span>
+<span>Horas/Atividades</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-stone-600 dark:text-stone-400 hover:text-lime-700 hover:translate-x-1 transition-transform duration-300 ease-out font-manrope text-sm" href="#">
+<span class="material-symbols-outlined">local_gas_station</span>
+<span>Consumo Gasóleo</span>
+</a>
+<a class="flex items-center gap-3 p-3 bg-white dark:bg-stone-900 text-lime-800 dark:text-lime-100 font-bold rounded-l-xl shadow-sm hover:translate-x-1 transition-transform duration-300 ease-out font-manrope text-sm" href="#">
+<span class="material-symbols-outlined">agriculture</span>
+<span>Alimentação Animal</span>
+</a>
+<div class="mt-auto pb-8">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined">add</span>
+                    Novo Registo
+                </button>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 p-6 md:p-10 max-w-5xl mx-auto">
+<!-- Header Section -->
+<div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h1 class="text-4xl font-extrabold text-on-surface tracking-tight mb-2">Alimentação Diária</h1>
+<p class="text-outline font-medium">Registo de consumos para o lote: <span class="text-primary">Gado Leiteiro A1</span></p>
+</div>
+<div class="flex gap-2">
+<div class="bg-surface-container-highest px-4 py-2 rounded-xl flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">calendar_today</span>
+<span class="font-bold text-on-surface">24 de Maio, 2024</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Style: Charts & Quick Stats -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+<!-- Weekly Consumption Chart Card -->
+<div class="md:col-span-2 bg-surface-container-lowest rounded-xl p-6 border border-stone-100">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-lg font-bold text-on-surface">Consumo Semanal (kg)</h3>
+<div class="flex items-center gap-2 text-xs font-bold text-outline uppercase tracking-wider">
+<span class="w-2 h-2 rounded-full bg-primary"></span> Feno
+                            <span class="w-2 h-2 rounded-full bg-secondary ml-2"></span> Ração
+                        </div>
+</div>
+<!-- Simple Weekly Chart Visualization -->
+<div class="flex items-end justify-between h-40 gap-2 px-2">
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-secondary/20 h-32 rounded-t-lg"></div>
+<div class="absolute bottom-0 w-full bg-primary h-24 rounded-t-lg transition-all hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-outline">SEG</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-secondary/20 h-28 rounded-t-lg"></div>
+<div class="absolute bottom-0 w-full bg-primary h-20 rounded-t-lg transition-all hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-outline">TER</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-secondary/20 h-36 rounded-t-lg"></div>
+<div class="absolute bottom-0 w-full bg-primary h-28 rounded-t-lg transition-all hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-outline">QUA</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-secondary/20 h-30 rounded-t-lg"></div>
+<div class="absolute bottom-0 w-full bg-primary h-22 rounded-t-lg transition-all hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-outline">QUI</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-secondary/20 h-32 rounded-t-lg"></div>
+<div class="absolute bottom-0 w-full bg-primary h-26 rounded-t-lg transition-all hover:brightness-110"></div>
+</div>
+<span class="text-[10px] font-bold text-on-surface">HOJE</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-container-low rounded-t-lg h-32"></div>
+<span class="text-[10px] font-bold text-outline">SÁB</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-surface-container-low rounded-t-lg h-32"></div>
+<span class="text-[10px] font-bold text-outline">DOM</span>
+</div>
+</div>
+</div>
+<!-- Stock Summary Card -->
+<div class="bg-primary text-on-primary rounded-xl p-6 flex flex-col justify-between overflow-hidden relative">
+<div class="relative z-10">
+<p class="text-primary-fixed/80 text-sm font-bold uppercase tracking-widest mb-1">Stock Crítico</p>
+<h3 class="text-3xl font-black mb-4">Tacos de Alfafa</h3>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary-fixed">warning</span>
+<span class="font-bold text-primary-fixed">Apenas 12 sacos restantes</span>
+</div>
+</div>
+<button class="relative z-10 w-full bg-white/20 backdrop-blur-md border border-white/30 py-3 rounded-lg font-bold hover:bg-white/30 transition-all">Encomendar Agora</button>
+<!-- Abstract graphic elements -->
+<div class="absolute -right-4 -bottom-4 w-32 h-32 bg-primary-container/30 rounded-full blur-3xl"></div>
+</div>
+</div>
+<!-- Feeding Entry Form -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
+<div class="px-8 py-6 border-b border-stone-50 flex justify-between items-center bg-surface-container-low">
+<h3 class="text-xl font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">restaurant</span>
+                        Composição da Diária
+                    </h3>
+<button class="text-primary font-bold flex items-center gap-1 hover:bg-primary/5 px-3 py-1 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-sm">settings</span>
+                        Gerir Itens
+                    </button>
+</div>
+<div class="p-8 space-y-6">
+<!-- Item Row: Fardos -->
+<div class="flex flex-col md:flex-row md:items-center gap-6 p-4 rounded-xl hover:bg-stone-50 transition-colors group">
+<div class="w-16 h-16 bg-secondary-container/30 rounded-2xl flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-3xl">inventory_2</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-lg">Fardos (Palha/Feno)</h4>
+<p class="text-sm text-outline">Unidade: Unidades (aprox. 25kg)</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-highest rounded-xl overflow-hidden">
+<button class="px-4 py-3 hover:bg-stone-200 transition-colors material-symbols-outlined">remove</button>
+<input class="w-20 bg-transparent border-none text-center font-bold text-on-surface focus:ring-0" type="number" value="12"/>
+<button class="px-4 py-3 hover:bg-stone-200 transition-colors material-symbols-outlined">add</button>
+</div>
+<div class="text-right min-w-[80px]">
+<span class="block text-xs font-bold text-outline uppercase tracking-wider">Total</span>
+<span class="font-black text-on-surface">300 kg</span>
+</div>
+</div>
+</div>
+<!-- Item Row: Bolas de Fenosilagem -->
+<div class="flex flex-col md:flex-row md:items-center gap-6 p-4 rounded-xl hover:bg-stone-50 transition-colors group">
+<div class="w-16 h-16 bg-tertiary-container/10 rounded-2xl flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-3xl">radio_button_checked</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-lg">Bolas de Fenosilagem</h4>
+<p class="text-sm text-outline">Unidade: Unidades (aprox. 450kg)</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-highest rounded-xl overflow-hidden">
+<button class="px-4 py-3 hover:bg-stone-200 transition-colors material-symbols-outlined">remove</button>
+<input class="w-20 bg-transparent border-none text-center font-bold text-on-surface focus:ring-0" type="number" value="2"/>
+<button class="px-4 py-3 hover:bg-stone-200 transition-colors material-symbols-outlined">add</button>
+</div>
+<div class="text-right min-w-[80px]">
+<span class="block text-xs font-bold text-outline uppercase tracking-wider">Total</span>
+<span class="font-black text-on-surface">900 kg</span>
+</div>
+</div>
+</div>
+<!-- Item Row: Tacos -->
+<div class="flex flex-col md:flex-row md:items-center gap-6 p-4 rounded-xl hover:bg-stone-50 transition-colors group">
+<div class="w-16 h-16 bg-primary-container/10 rounded-2xl flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">layers</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-lg">Tacos (Concentrado)</h4>
+<p class="text-sm text-outline">Unidade: Kg</p>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-highest rounded-xl overflow-hidden">
+<button class="px-4 py-3 hover:bg-stone-200 transition-colors material-symbols-outlined">remove</button>
+<input class="w-20 bg-transparent border-none text-center font-bold text-on-surface focus:ring-0" type="number" value="45"/>
+<button class="px-4 py-3 hover:bg-stone-200 transition-colors material-symbols-outlined">add</button>
+</div>
+<div class="text-right min-w-[80px]">
+<span class="block text-xs font-bold text-outline uppercase tracking-wider">Total</span>
+<span class="font-black text-on-surface">45 kg</span>
+</div>
+</div>
+</div>
+<!-- Observation Field -->
+<div class="mt-8">
+<label class="block text-sm font-bold text-outline mb-2 ml-1">Notas de Observação</label>
+<textarea class="w-full bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 placeholder:text-outline/50 p-4" placeholder="Ex: Adicionado suplemento vitamínico no lote da manhã..." rows="3"></textarea>
+</div>
+<!-- Action Footer -->
+<div class="flex items-center justify-end gap-4 pt-6">
+<button class="px-8 py-4 text-stone-600 font-bold hover:bg-stone-100 rounded-xl transition-colors">Cancelar</button>
+<button class="px-10 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                            Submeter Registo
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pb-8 pt-4 bg-white/70 dark:bg-stone-900/70 backdrop-blur-xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)] rounded-t-3xl border-t border-white/20">
+<a class="text-stone-400 dark:text-stone-500 flex flex-col items-center p-2 active:bg-stone-100 transition-all" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-inter text-[10px] font-bold uppercase tracking-widest mt-1">Horas</span>
+</a>
+<a class="text-stone-400 dark:text-stone-500 flex flex-col items-center p-2 active:bg-stone-100 transition-all" href="#">
+<span class="material-symbols-outlined">ev_station</span>
+<span class="font-inter text-[10px] font-bold uppercase tracking-widest mt-1">Gasóleo</span>
+</a>
+<a class="bg-lime-800 dark:bg-lime-600 text-white rounded-2xl p-3 flex flex-col items-center scale-110 -translate-y-2 transition-all shadow-lg shadow-lime-900/20" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="font-inter text-[10px] font-bold uppercase tracking-widest mt-1">Alimentar</span>
+</a>
+<a class="text-stone-400 dark:text-stone-500 flex flex-col items-center p-2 active:bg-stone-100 transition-all" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-inter text-[10px] font-bold uppercase tracking-widest mt-1">Perfil</span>
+</a>
+</nav>
+</body></html>

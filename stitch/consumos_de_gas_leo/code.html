@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html lang="pt"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgroPrecision - Registo de Gasóleo</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#b9ecbd",
+                        "inverse-on-surface": "#eff1f0",
+                        "on-tertiary-fixed": "#001e2f",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#24516d",
+                        "tertiary-container": "#3f6986",
+                        "on-tertiary-fixed-variant": "#1d4b67",
+                        "tertiary-fixed": "#c9e6ff",
+                        "on-surface-variant": "#44483c",
+                        "surface-tint": "#944a00",
+                        "on-primary-fixed-variant": "#713700",
+                        "on-background": "#191c1c",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#c9e6ff",
+                        "primary-fixed": "#ffdcc5",
+                        "surface-container": "#eceeed",
+                        "on-primary-container": "#ffdbc4",
+                        "on-primary-fixed": "#301400",
+                        "surface-container-low": "#f2f4f3",
+                        "on-primary": "#ffffff",
+                        "primary": "#793c00",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#a0d3a5",
+                        "inverse-primary": "#ffb783",
+                        "surface-container-highest": "#e1e3e2",
+                        "surface-bright": "#f8faf9",
+                        "secondary": "#3a6843",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#d8dad9",
+                        "background": "#f8faf9",
+                        "outline": "#74796b",
+                        "on-surface": "#191c1c",
+                        "outline-variant": "#c4c8b8",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#ffb783",
+                        "primary-container": "#9d4f00",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e6e9e8",
+                        "secondary-fixed": "#bcefc0",
+                        "on-secondary-fixed-variant": "#22502d",
+                        "surface": "#f8faf9",
+                        "on-secondary-fixed": "#00210a",
+                        "on-secondary-container": "#3e6d47",
+                        "tertiary-fixed-dim": "#a1cced",
+                        "surface-variant": "#e1e3e2",
+                        "inverse-surface": "#2e3131",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8faf9; }
+        .font-manrope { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- Top Navigation Shell -->
+<nav class="fixed top-0 w-full z-40 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-b border-stone-200/20 flex justify-between items-center px-6 py-3">
+<div class="text-xl font-bold text-lime-900 dark:text-white tracking-tighter font-manrope">AgroPrecision</div>
+<div class="hidden md:flex gap-8 items-center">
+<a class="text-stone-500 dark:text-stone-400 font-manrope text-sm font-semibold tracking-tight hover:bg-stone-50 transition-colors" href="#">Horas/Atividades</a>
+<a class="text-lime-700 dark:text-lime-400 font-bold border-b-2 border-lime-700 font-manrope text-sm tracking-tight" href="#">Consumo Gasóleo</a>
+<a class="text-stone-500 dark:text-stone-400 font-manrope text-sm font-semibold tracking-tight hover:bg-stone-50 transition-colors" href="#">Alimentação Animal</a>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">settings</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="User profile" data-alt="Close-up portrait of a professional male agronomist smiling in a sunlit agricultural field setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxX6ZnhEJJmGWfzcGTWdpnpLMa3rAVveoggGchGqckp9zBRpBKADfPB9zGJC34BA5Zsiiv_ZxSOUsYRgBcGBoHalwAa6Tw-Bc-oEZNsDhr6Y1t_tbUOisDL42elAGx32k2ndTV3BAmRGvhnR4hrxlzjXLSPrvyPJLHXXslfxys9itkJgt02t22UFU_JNwE25aDiE2sPDNxijekyQgbQv1WtjScB4RP8Uvy7s6V8AaDKryy0PznI64XRGdJDiCXHkCMiWoGxoFNsco"/>
+</div>
+</div>
+</nav>
+<!-- Side Navigation Shell (Desktop) -->
+<aside class="fixed left-0 top-0 h-screen w-64 hidden md:flex flex-col bg-stone-50 dark:bg-stone-950 border-r border-stone-200/50 pt-20 p-4 gap-2">
+<div class="px-4 mb-6">
+<h2 class="text-lg font-black text-lime-900 dark:text-white font-manrope">Gestão Agrícola</h2>
+<p class="text-xs text-stone-500 font-manrope">The Digital Agronomist</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 hover:text-lime-700 hover:translate-x-1 transition-transform duration-300 ease-out font-manrope text-sm" href="#">
+<span class="material-symbols-outlined">timer</span>
+                Horas/Atividades
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-stone-900 text-lime-800 dark:text-lime-100 font-bold rounded-l-xl shadow-sm font-manrope text-sm" href="#">
+<span class="material-symbols-outlined">local_gas_station</span>
+                Consumo Gasóleo
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 hover:text-lime-700 hover:translate-x-1 transition-transform duration-300 ease-out font-manrope text-sm" href="#">
+<span class="material-symbols-outlined">agriculture</span>
+                Alimentação Animal
+            </a>
+</nav>
+<button class="mt-auto flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary-container text-on-primary py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all">
+<span class="material-symbols-outlined">add</span>
+            Novo Registo
+        </button>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 pt-20 pb-24 px-4 md:px-10 min-h-screen">
+<header class="mb-10 max-w-5xl mx-auto">
+<h1 class="text-4xl font-extrabold text-on-surface tracking-tight font-manrope">Consumo de Combustível</h1>
+<p class="text-on-surface-variant mt-2 font-body">Monitorização e registo preciso da frota agrícola.</p>
+</header>
+<div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left: Quick Action & Form Section -->
+<div class="lg:col-span-7 space-y-8">
+<!-- Registration Form Card -->
+<section class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/10 shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<h2 class="text-xl font-bold font-manrope flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">edit_note</span>
+                            Novo Registo
+                        </h2>
+</div>
+<form class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold text-on-surface-variant font-label">Data do Registo</label>
+<input class="bg-surface-container-highest border-none rounded-md py-3 px-4 focus:ring-2 focus:ring-primary text-on-surface font-body" type="date"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold text-on-surface-variant font-label">Veículo</label>
+<select class="bg-surface-container-highest border-none rounded-md py-3 px-4 focus:ring-2 focus:ring-primary text-on-surface font-body">
+<option>John Deere 6155M - 45-RT-12</option>
+<option>Fendt 724 Vario - AA-00-BB</option>
+<option>Toyota Hilux - 12-GC-89</option>
+</select>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold text-on-surface-variant font-label">Tipo de Gasóleo</label>
+<div class="grid grid-cols-2 gap-4">
+<button class="py-4 border-2 border-primary bg-primary/5 text-primary font-bold rounded-xl flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">agriculture</span>
+                                    Agrícola
+                                </button>
+<button class="py-4 border-2 border-transparent bg-surface-container text-on-surface-variant font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined">directions_car</span>
+                                    Rodoviário
+                                </button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold text-on-surface-variant font-label">Horas / KM Atuais</label>
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-none rounded-md py-3 pl-4 pr-12 focus:ring-2 focus:ring-primary text-on-surface font-body" placeholder="0.0" type="number"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs font-bold uppercase">H/KM</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-bold text-on-surface-variant font-label">Litros Consumidos</label>
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-none rounded-md py-3 pl-4 pr-12 focus:ring-2 focus:ring-primary text-on-surface font-body" placeholder="0.00" type="number"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs font-bold uppercase font-label">L</span>
+</div>
+</div>
+</div>
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-5 rounded-xl font-extrabold text-lg shadow-xl hover:brightness-110 active:scale-95 transition-all" type="submit">
+                            Submeter Registo
+                        </button>
+</form>
+</section>
+</div>
+<!-- Right: Vehicle List & Stats Section -->
+<div class="lg:col-span-5 space-y-6">
+<!-- Vehicle Selector/Manager -->
+<div class="bg-surface-container rounded-xl p-6">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold font-manrope text-lime-900">Frota Ativa</h3>
+<button class="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+                            Adicionar Veículo
+                        </button>
+</div>
+<div class="space-y-3">
+<!-- Vehicle Item -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-center justify-between border border-white/50 group hover:border-primary/20 transition-all">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined">agriculture</span>
+</div>
+<div>
+<div class="font-bold text-on-surface text-sm">John Deere 6155M</div>
+<div class="text-xs text-on-surface-variant font-mono">45-RT-12</div>
+</div>
+</div>
+<button class="bg-primary-fixed hover:bg-primary-container hover:text-white text-primary px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+                                Registo Rápido
+                            </button>
+</div>
+<!-- Vehicle Item -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-center justify-between border border-white/50 group hover:border-primary/20 transition-all">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-tertiary-container flex items-center justify-center text-on-tertiary-container">
+<span class="material-symbols-outlined">commute</span>
+</div>
+<div>
+<div class="font-bold text-on-surface text-sm">Toyota Hilux</div>
+<div class="text-xs text-on-surface-variant font-mono">12-GC-89</div>
+</div>
+</div>
+<button class="bg-primary-fixed hover:bg-primary-container hover:text-white text-primary px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+                                Registo Rápido
+                            </button>
+</div>
+<!-- Vehicle Item -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-center justify-between border border-white/50 group hover:border-primary/20 transition-all opacity-70">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">construction</span>
+</div>
+<div>
+<div class="font-bold text-on-surface text-sm">Fendt 724 Vario</div>
+<div class="text-xs text-on-surface-variant font-mono">AA-00-BB</div>
+</div>
+</div>
+<span class="text-[10px] bg-surface-container-high px-2 py-1 rounded text-on-surface-variant font-bold uppercase">Oficina</span>
+</div>
+</div>
+</div>
+<!-- Mini Insight Card -->
+<div class="relative overflow-hidden bg-inverse-surface text-inverse-on-surface rounded-xl p-6 shadow-lg">
+<div class="absolute -right-10 -bottom-10 opacity-10">
+<span class="material-symbols-outlined" style="font-size: 160px;">local_gas_station</span>
+</div>
+<div class="relative z-10">
+<h4 class="text-sm font-bold uppercase tracking-widest text-primary-fixed mb-4">Consumo Mensal</h4>
+<div class="text-4xl font-extrabold font-manrope">1,420.5 <span class="text-lg font-normal">Litros</span></div>
+<div class="mt-4 flex items-center gap-2 text-secondary-fixed">
+<span class="material-symbols-outlined text-sm">trending_down</span>
+<span class="text-sm font-bold">-4.2% vs mês anterior</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 bg-white/70 dark:bg-stone-900/70 backdrop-blur-xl flex justify-around items-center px-6 pb-8 pt-4 rounded-t-3xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)] border-t border-white/20">
+<a class="text-stone-400 flex flex-col items-center p-2" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="text-[10px] font-bold uppercase tracking-widest mt-1">Horas</span>
+</a>
+<a class="bg-lime-800 text-white rounded-2xl p-3 flex flex-col items-center scale-110 -translate-y-2 transition-all" href="#">
+<span class="material-symbols-outlined">ev_station</span>
+<span class="text-[10px] font-bold uppercase tracking-widest mt-1">Gasóleo</span>
+</a>
+<a class="text-stone-400 flex flex-col items-center p-2" href="#">
+<span class="material-symbols-outlined">pets</span>
+<span class="text-[10px] font-bold uppercase tracking-widest mt-1">Alimentar</span>
+</a>
+<a class="text-stone-400 flex flex-col items-center p-2" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold uppercase tracking-widest mt-1">Perfil</span>
+</a>
+</nav>
+<!-- Contextual FAB (Only visible on specific screens if logic dictated, but requested in design context) -->
+<button class="fixed bottom-24 right-6 md:right-10 w-16 h-16 bg-primary-container text-white rounded-full shadow-2xl flex items-center justify-center active:scale-95 transition-all z-30">
+<span class="material-symbols-outlined" style="font-size: 32px;">qr_code_scanner</span>
+</button>
+</body></html>

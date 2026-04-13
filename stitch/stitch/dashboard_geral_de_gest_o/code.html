@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+
+<html lang="pt"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgroPrecision - Dashboard de Gestão</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "secondary-container": "#b9ecbd",
+                "inverse-on-surface": "#eff1f0",
+                "on-tertiary-fixed": "#001e2f",
+                "on-secondary": "#ffffff",
+                "tertiary": "#24516d",
+                "tertiary-container": "#3f6986",
+                "on-tertiary-fixed-variant": "#1d4b67",
+                "tertiary-fixed": "#c9e6ff",
+                "on-surface-variant": "#44483c",
+                "surface-tint": "#944a00",
+                "on-primary-fixed-variant": "#713700",
+                "on-background": "#191c1c",
+                "on-tertiary": "#ffffff",
+                "on-tertiary-container": "#c9e6ff",
+                "primary-fixed": "#ffdcc5",
+                "surface-container": "#eceeed",
+                "on-primary-container": "#ffdbc4",
+                "on-primary-fixed": "#301400",
+                "surface-container-low": "#f2f4f3",
+                "on-primary": "#ffffff",
+                "primary": "#793c00",
+                "surface-container-lowest": "#ffffff",
+                "secondary-fixed-dim": "#a0d3a5",
+                "inverse-primary": "#ffb783",
+                "surface-container-highest": "#e1e3e2",
+                "surface-bright": "#f8faf9",
+                "secondary": "#3a6843",
+                "on-error": "#ffffff",
+                "surface-dim": "#d8dad9",
+                "background": "#f8faf9",
+                "outline": "#74796b",
+                "on-surface": "#191c1c",
+                "outline-variant": "#c4c8b8",
+                "error-container": "#ffdad6",
+                "primary-fixed-dim": "#ffb783",
+                "primary-container": "#9d4f00",
+                "error": "#ba1a1a",
+                "surface-container-high": "#e6e9e8",
+                "secondary-fixed": "#bcefc0",
+                "on-secondary-fixed-variant": "#22502d",
+                "surface": "#f8faf9",
+                "on-secondary-fixed": "#00210a",
+                "on-secondary-container": "#3e6d47",
+                "tertiary-fixed-dim": "#a1cced",
+                "surface-variant": "#e1e3e2",
+                "inverse-surface": "#2e3131",
+                "on-error-container": "#93000a"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "fontFamily": {
+                "headline": ["Manrope"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface">
+<!-- TopNavBar Shell -->
+<header class="bg-white/80 dark:bg-stone-900/80 backdrop-blur-md fixed top-0 w-full z-40 flex justify-between items-center px-6 py-3 border-b border-stone-200/20">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold text-lime-900 dark:text-white tracking-tighter">AgroPrecision</span>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="font-manrope text-sm font-bold tracking-tight text-lime-700 dark:text-lime-400 border-b-2 border-lime-700 pb-1" href="#">Dashboard</a>
+<a class="font-manrope text-sm font-semibold tracking-tight text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors px-2 py-1 rounded" href="#">Explorar</a>
+<a class="font-manrope text-sm font-semibold tracking-tight text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors px-2 py-1 rounded" href="#">Relatórios</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center bg-stone-100/50 dark:bg-stone-800/50 rounded-full px-4 py-1.5">
+<span class="material-symbols-outlined text-stone-400 text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-stone-600 w-48" placeholder="Procurar dados..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<button class="material-symbols-outlined text-stone-500 hover:bg-stone-50 dark:hover:bg-stone-800 p-2 rounded-full active:scale-95 duration-200">notifications</button>
+<button class="material-symbols-outlined text-stone-500 hover:bg-stone-50 dark:hover:bg-stone-800 p-2 rounded-full active:scale-95 duration-200">settings</button>
+<img alt="User profile" class="w-8 h-8 rounded-full border-2 border-primary/20" data-alt="Close-up portrait of a professional farm manager with a friendly expression, outdoor natural lighting, rural background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoD1j69k0WJzTNq2DMSaeA2DnaTKqucH--KhHzqAilZanca--srIjufbE1KvJzukpFCR3uXbL-VX5g7KmEPsi5h0jjX0QomXjcunINdih3aOyrW-B854Me9lIAkiNbzByINkox6mv-RbmPHZLTmxuR_fC5ym-J8Nde6iRuBHEvg9NHHsFPE-VCsVQTCNIdMNubTY8zhRIsMNXdO0ZgBjLlKZfF_y4mefouufdh6uta6AF3wWwMnPwbxEgdLAkSoji77qgqmvt9Z8Y"/>
+</div>
+</div>
+</header>
+<div class="flex min-h-screen pt-16">
+<!-- SideNavBar Shell -->
+<aside class="h-screen w-64 hidden md:flex flex-col border-r border-stone-200/50 bg-stone-50 dark:bg-stone-950 p-4 gap-2 sticky top-16">
+<div class="mb-8 px-2">
+<h2 class="text-lg font-black text-lime-900 dark:text-white">Gestão Agrícola</h2>
+<p class="text-xs text-stone-500 font-manrope">The Digital Agronomist</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-stone-900 text-lime-800 dark:text-lime-100 font-bold rounded-l-xl shadow-sm transition-transform hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">timer</span>
+<span class="font-manrope text-sm">Horas/Atividades</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 dark:text-stone-400 hover:text-lime-700 transition-transform hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">local_gas_station</span>
+<span class="font-manrope text-sm">Consumo Gasóleo</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-stone-600 dark:text-stone-400 hover:text-lime-700 transition-transform hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">agriculture</span>
+<span class="font-manrope text-sm">Alimentação Animal</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 border-t border-stone-200/50">
+<button class="w-full bg-primary-container text-on-primary-container py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined">add</span>
+                    Novo Registo
+                </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 p-6 md:p-10 mb-20 md:mb-0">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
+<div>
+<h1 class="text-4xl md:text-5xl font-headline font-extrabold tracking-tight text-on-surface">Painel de Operações</h1>
+<p class="text-on-surface-variant mt-2 font-medium">Bem-vindo, João Silva. Aqui está o resumo da sua exploração hoje.</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container-lowest text-on-surface font-semibold px-5 py-3 rounded-xl flex items-center gap-2 shadow-sm border border-stone-200/10 hover:bg-stone-50 transition-all">
+<span class="material-symbols-outlined text-[20px]">download</span>
+                        Excel
+                    </button>
+<button class="bg-surface-container-lowest text-on-surface font-semibold px-5 py-3 rounded-xl flex items-center gap-2 shadow-sm border border-stone-200/10 hover:bg-stone-50 transition-all">
+<span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+                        PDF
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
+<!-- Large Highlight Card -->
+<div class="md:col-span-2 bg-surface-container-lowest rounded-[2rem] p-8 flex flex-col justify-between min-h-[280px] shadow-sm border border-white relative overflow-hidden">
+<div class="z-10">
+<span class="bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest">Eficiência Mensal</span>
+<h3 class="text-6xl font-headline font-black mt-6 text-primary">428h</h3>
+<p class="text-on-surface-variant font-medium mt-2">Total de horas máquinas/atividades em Outubro</p>
+</div>
+<div class="z-10 flex gap-4 mt-8">
+<div class="flex items-center gap-2 text-secondary font-bold">
+<span class="material-symbols-outlined">trending_up</span>
+<span>+12% vs Setembro</span>
+</div>
+</div>
+<!-- Abstract Background Shape -->
+<div class="absolute -right-12 -bottom-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl"></div>
+</div>
+<!-- Metric Card 2 -->
+<div class="bg-surface-container-low rounded-[2rem] p-8 flex flex-col justify-between shadow-sm border border-stone-100">
+<div>
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">local_gas_station</span>
+</div>
+<h3 class="text-3xl font-headline font-bold">2.450L</h3>
+<p class="text-on-surface-variant text-sm mt-1">Consumo de Gasóleo</p>
+</div>
+<div class="mt-4 h-2 w-full bg-stone-200 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[65%] rounded-full"></div>
+</div>
+</div>
+<!-- Metric Card 3 -->
+<div class="bg-surface-container rounded-[2rem] p-8 flex flex-col justify-between shadow-sm border border-stone-100">
+<div>
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-secondary">pets</span>
+</div>
+<h3 class="text-3xl font-headline font-bold">82%</h3>
+<p class="text-on-surface-variant text-sm mt-1">Inventário Silagem</p>
+</div>
+<div class="flex -space-x-2 mt-4">
+<img class="w-8 h-8 rounded-full border-2 border-white" data-alt="Lush green grass fields in a farm under bright sunlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbDjI9fgeETMx2TfSLBl2AhR4JZv3Ru5VBXBJeLGgIu6czDzznMyjrJBaZGc6DSdosrOlc42QbHMCqY_UH6ZAH-1I4Ioa79m6vJXTUAhd-69fUuUXkw5ILHNsWm5ob5m8Z_6ApcYmuNH75NOOoXCK4HRz4kZy45J9mM2cw3f0-jqnfsXGVKHbZ-SaiFryZGnHWwUtNUjuuXSEVfdRViqM-roMpXI2CQhiVyLPRw-wgC1UczmjAs46Yb9ZbMqkJ4T7lFq3-iqPwxIs"/>
+<img class="w-8 h-8 rounded-full border-2 border-white" data-alt="A large farm warehouse storing animal feed and hay bales" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK1OCKonnWT4nFIWFgJsqoBkBO7SM8MfIVZM0fts6K5lkoPciJzTyC3fjiGxz5BCSgauZ7WNe3BiyOkCq51k4SscfdkHW4_ExAZVOC21RijhVl2w5RIEzMWuQ5_O-Rw98c14m1jRppXA7xUjPTVfqTUBfvj5ERtTLDX2R5l8ySL7yMNLHr286l_xMZiuBaeKavDAaiiKbQRUUBypyXqiTZ9ajkCu0blnZacB_l-d1eifKyI4-Y01FUeTYgyx9DUyZdEb0grp23W9s"/>
+</div>
+</div>
+</div>
+<!-- Main Actions & Recent Activity -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+<!-- Table Section -->
+<div class="lg:col-span-2">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-2xl font-headline font-extrabold">Registos Recentes</h2>
+<button class="text-primary font-bold text-sm flex items-center gap-1 hover:underline">
+                            Ver tudo <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-sm border border-stone-100">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-stone-50/50">
+<th class="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-widest">Atividade</th>
+<th class="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-widest">Data</th>
+<th class="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-widest text-right">Valor</th>
+<th class="px-6 py-4 text-xs font-bold text-stone-500 uppercase tracking-widest">Estado</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-stone-100">
+<tr class="hover:bg-stone-50 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-lime-100 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-lime-800 text-sm">agriculture</span>
+</div>
+<span class="font-semibold text-sm">Lavoura - Campo Norte</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Hoje, 09:30</td>
+<td class="px-6 py-5 text-sm font-bold text-right">4.5h</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-black rounded-full uppercase">Concluído</span>
+</td>
+</tr>
+<tr class="hover:bg-stone-50 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-orange-800 text-sm">local_gas_station</span>
+</div>
+<span class="font-semibold text-sm">Abastecimento Trator 04</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Hoje, 08:15</td>
+<td class="px-6 py-5 text-sm font-bold text-right">120L</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 bg-stone-200 text-stone-600 text-[10px] font-black rounded-full uppercase">Pendente</span>
+</td>
+</tr>
+<tr class="hover:bg-stone-50 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-blue-800 text-sm">pets</span>
+</div>
+<span class="font-semibold text-sm">Distribuição Ração Lote B</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Ontem, 18:40</td>
+<td class="px-6 py-5 text-sm font-bold text-right">800kg</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-black rounded-full uppercase">Concluído</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Automation CTA -->
+<div class="flex flex-col gap-6">
+<div class="bg-primary bg-gradient-to-br from-primary to-primary-container rounded-[2rem] p-8 text-on-primary shadow-xl shadow-primary/10 flex flex-col h-full justify-between">
+<div>
+<div class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-8">
+<span class="material-symbols-outlined text-3xl">auto_mode</span>
+</div>
+<h3 class="text-2xl font-headline font-extrabold leading-tight">Configurar Automação de Exportação</h3>
+<p class="text-on-primary-container mt-4 text-sm font-medium leading-relaxed">
+                                Receba relatórios semanais automáticos no seu e-mail ou via WhatsApp. Sem complicações, apenas os dados que interessam.
+                            </p>
+</div>
+<button class="mt-8 bg-white text-primary font-bold py-4 rounded-2xl hover:bg-stone-100 transition-all active:scale-95 duration-200 flex items-center justify-center gap-2 group">
+                            Ativar Automação
+                            <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">bolt</span>
+</button>
+</div>
+<div class="bg-surface-container-highest rounded-[2rem] p-6">
+<h4 class="font-bold text-sm mb-4">Exportações Recentes</h4>
+<div class="space-y-3">
+<div class="flex items-center justify-between bg-white p-3 rounded-xl">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-stone-400">description</span>
+<span class="text-xs font-semibold">Relatório_Out_2023.xlsx</span>
+</div>
+<span class="material-symbols-outlined text-stone-300 text-sm">download</span>
+</div>
+<div class="flex items-center justify-between bg-white p-3 rounded-xl">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-stone-400">description</span>
+<span class="text-xs font-semibold">Consumo_Diesel_S42.pdf</span>
+</div>
+<span class="material-symbols-outlined text-stone-300 text-sm">download</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar Shell (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pb-8 pt-4 bg-white/70 dark:bg-stone-900/70 backdrop-blur-xl rounded-t-3xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)] border-t border-white/20">
+<a class="bg-lime-800 dark:bg-lime-600 text-white rounded-2xl p-3 flex flex-col items-center scale-110 -translate-y-2 transition-all" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-inter text-[10px] font-bold uppercase tracking-widest mt-1">Horas</span>
+</a>
+<a class="text-stone-400 dark:text-stone-500 flex flex-col items-center p-2 active:bg-stone-100 dark:active:bg-stone-800" href="#">
+<span class="material-symbols-outlined">ev_station</span>
+<span class="font-inter text-[10px] font-bold uppercase tracking-widest mt-1">Gasóleo</span>
+</a>
+<a class="text-stone-400 dark:text-stone-500 flex flex-col items-center p-2 active:bg-stone-100 dark:active:bg-stone-800" href="#">
+<span class="material-symbols-outlined">pets</span>
+<span class="font-inter text-[10px] font-bold uppercase tracking-widest mt-1">Alimentar</span>
+</a>
+<a class="text-stone-400 dark:text-stone-500 flex flex-col items-center p-2 active:bg-stone-100 dark:active:bg-stone-800" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-inter text-[10px] font-bold uppercase tracking-widest mt-1">Perfil</span>
+</a>
+</nav>
+</body></html>
