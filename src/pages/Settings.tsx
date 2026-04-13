@@ -313,42 +313,83 @@ function AddUserModal({ open, onClose, onSaved }: { open: boolean; onClose: () =
 
   return (
     <Modal open={open} onClose={onClose} title="Novo Utilizador">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {error && (
-          <div style={{ background: '#ffdad6', color: '#93000a', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ background: '#ffdad6', color: '#93000a', padding: '0.75rem 1rem', borderRadius: '0.75rem', fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>error</span>{error}
           </div>
         )}
-        <div>
-          <label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Nome Completo</label>
-          <input required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Primeiro e ultimo nome" className="input-field" />
+
+        {/* Avatar placeholder + name section */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--surface-low)', borderRadius: '1rem' }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>person_add</span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontWeight: 700, fontSize: '0.875rem', fontFamily: "'Manrope', sans-serif" }}>
+              {fullName || 'Novo Utilizador'}
+            </p>
+            <p style={{ fontSize: '0.75rem', color: '#78716c' }}>
+              {email || 'email@exemplo.com'}
+            </p>
+          </div>
         </div>
-        <div>
-          <label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Email</label>
-          <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" className="input-field" />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label className="text-label" style={{ display: 'block', marginBottom: 6, marginLeft: 2 }}>Nome Completo</label>
+            <input required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Primeiro e ultimo nome" className="input-field" />
+          </div>
+
+          <div>
+            <label className="text-label" style={{ display: 'block', marginBottom: 6, marginLeft: 2 }}>Email</label>
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" className="input-field" />
+          </div>
+
+          <div>
+            <label className="text-label" style={{ display: 'block', marginBottom: 6, marginLeft: 2 }}>Password</label>
+            <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" className="input-field" />
+          </div>
         </div>
+
         <div>
-          <label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Password</label>
-          <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" className="input-field" />
-        </div>
-        <div>
-          <label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Role</label>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <label className="text-label" style={{ display: 'block', marginBottom: 8, marginLeft: 2 }}>Tipo de Acesso</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <button type="button" onClick={() => setRole('utilizador')}
-              className={`toggle-btn ${role === 'utilizador' ? 'active' : 'inactive'}`} style={{ flex: 1 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>person</span>Utilizador
+              style={{
+                padding: '1rem', borderRadius: '1rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                background: role === 'utilizador' ? 'var(--secondary)' : 'var(--surface-highest)',
+                color: role === 'utilizador' ? 'white' : 'var(--on-surface-variant)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                boxShadow: role === 'utilizador' ? '0 4px 14px rgba(58,104,67,0.2)' : 'none',
+              }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 28 }}>person</span>
+              <span style={{ fontWeight: 700, fontSize: '0.8125rem' }}>Utilizador</span>
+              <span style={{ fontSize: '0.625rem', opacity: 0.7 }}>Acesso basico</span>
             </button>
             <button type="button" onClick={() => setRole('admin')}
-              className={`toggle-btn ${role === 'admin' ? 'active' : 'inactive'}`} style={{ flex: 1 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>shield_person</span>Admin
+              style={{
+                padding: '1rem', borderRadius: '1rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                background: role === 'admin' ? 'var(--primary)' : 'var(--surface-highest)',
+                color: role === 'admin' ? 'white' : 'var(--on-surface-variant)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                boxShadow: role === 'admin' ? '0 4px 14px rgba(121,60,0,0.2)' : 'none',
+              }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 28 }}>shield_person</span>
+              <span style={{ fontWeight: 700, fontSize: '0.8125rem' }}>Admin</span>
+              <span style={{ fontSize: '0.625rem', opacity: 0.7 }}>Acesso total</span>
             </button>
           </div>
         </div>
-        <p style={{ fontSize: '0.75rem', color: '#78716c', background: 'var(--surface-low)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>info</span>
-          Utilizadores criados pelo admin ficam automaticamente ativos, sem necessidade de aprovacao.
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.75rem 1rem', background: 'var(--surface-low)', borderRadius: '0.75rem' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--secondary)', marginTop: 1, flexShrink: 0 }}>check_circle</span>
+          <p style={{ fontSize: '0.75rem', color: '#78716c', lineHeight: 1.5 }}>
+            Utilizadores criados pelo admin ficam automaticamente ativos, sem necessidade de aprovacao.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.25rem' }}>
           <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
           <button type="submit" className="btn-primary" disabled={saving} style={{ padding: '0.75rem 1.25rem', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'A criar...' : 'Criar Utilizador'}
