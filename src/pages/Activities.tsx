@@ -258,8 +258,8 @@ export default function Activities() {
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '0 6px', minHeight: 0,
                           }}>
-                            <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1 }}>{typeName}</span>
-                            <span style={{ fontSize: '0.5625rem', fontWeight: 800, color: c, flexShrink: 0, lineHeight: 1 }}>{hours}h</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{typeName}</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: c, flexShrink: 0, lineHeight: 1.2 }}>{hours}h</span>
                           </div>
                         )
                       })}
