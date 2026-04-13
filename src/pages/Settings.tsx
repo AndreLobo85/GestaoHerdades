@@ -287,14 +287,36 @@ function AddUserModal({ open, onClose, onSaved }: { open: boolean; onClose: () =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(''); setSaving(true)
-    const { data, error: signUpErr } = await supabase.auth.signUp({
-      email, password, options: { data: { full_name: fullName } }
-    })
-    if (signUpErr) { setError(signUpErr.message); setSaving(false); return }
-    if (data.user) {
-      await new Promise(r => setTimeout(r, 1000))
-      await supabase.from('profiles').update({ status: 'active', role, full_name: fullName, email } as never).eq('id', data.user.id)
+
+    // Use REST API directly to avoid logging out the admin
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+    try {
+      const res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+        method: 'POST',
+        headers: { 'apikey': supabaseKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, data: { full_name: fullName } })
+      })
+      const result = await res.json()
+
+      if (!res.ok || result.error) {
+        setError(result.error?.message || result.msg || 'Erro ao criar utilizador')
+        setSaving(false); return
+      }
+
+      const userId = result.id
+      if (userId) {
+        // Wait for the DB trigger to create the profile
+        await new Promise(r => setTimeout(r, 1500))
+        // Update profile to active with correct role (admin-created = no approval needed)
+        await supabase.from('profiles').update({ status: 'active', role, full_name: fullName, email } as never).eq('id', userId)
+      }
+    } catch (err) {
+      setError('Erro de rede ao criar utilizador')
+      setSaving(false); return
     }
+
     setFullName(''); setEmail(''); setPassword(''); setRole('utilizador')
     setSaving(false); onSaved()
   }
