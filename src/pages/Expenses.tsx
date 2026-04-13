@@ -15,7 +15,7 @@ export default function Expenses() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
-  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], km: '', description: '', invoice_number: '', invoice_amount: '' })
+  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], km: '', description: '', invoice_number: '', invoice_amount: '', invoice_file_url: null as string | null })
 
   const fetchExpenses = useCallback(async () => {
     if (!selectedVehicle) return
@@ -34,7 +34,7 @@ export default function Expenses() {
   }, [activeVehicles, selectedVehicle])
 
   const resetForm = () => {
-    setForm({ date: new Date().toISOString().split('T')[0], km: '', description: '', invoice_number: '', invoice_amount: '' })
+    setForm({ date: new Date().toISOString().split('T')[0], km: '', description: '', invoice_number: '', invoice_amount: '', invoice_file_url: null })
     setEditingId(null)
   }
 
@@ -72,6 +72,7 @@ export default function Expenses() {
     setForm({
       date: exp.date, km: String(exp.km), description: exp.description,
       invoice_number: exp.invoice_number, invoice_amount: String(exp.invoice_amount),
+      invoice_file_url: exp.invoice_file_url,
     })
     setEditingId(exp.id)
     setModalOpen(true)
@@ -290,6 +291,63 @@ export default function Expenses() {
                 <input type="number" required min="0" step="0.01" value={form.invoice_amount} onChange={e => setForm({ ...form, invoice_amount: e.target.value })} placeholder="0.00" className="input-field" />
                 <span style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: '#a8a29e', fontSize: '0.75rem', fontWeight: 700 }}>€</span>
               </div>
+            </div>
+          </div>
+
+          {/* Invoice file upload */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>Documento da Fatura</label>
+            {form.invoice_file_url ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem', background: 'var(--surface-low)', borderRadius: '0.875rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--secondary)' }}>description</span>
+                <div style={{ flex: 1 }}>
+                  <a href={form.invoice_file_url} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
+                    Ver documento anexado
+                  </a>
+                  <p style={{ fontSize: '0.6875rem', color: '#a8a29e' }}>Clique para abrir ou carregue novo para substituir</p>
+                </div>
+                <button type="button" onClick={() => setForm({ ...form, invoice_file_url: null })}
+                  style={{ padding: '0.375rem', border: 'none', background: 'none', cursor: 'pointer' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--error)' }}>close</span>
+                </button>
+              </div>
+            ) : null}
+            <div style={{ marginTop: form.invoice_file_url ? '0.5rem' : 0 }}>
+              <label style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                padding: '1rem', borderRadius: '0.875rem', cursor: uploading ? 'wait' : 'pointer',
+                border: '2px dashed #d6d3d1', color: '#78716c', fontSize: '0.875rem', fontWeight: 600,
+                transition: 'all 0.15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#793c00'; e.currentTarget.style.color = '#793c00' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d6d3d1'; e.currentTarget.style.color = '#78716c' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{uploading ? 'hourglass_top' : 'cloud_upload'}</span>
+                {uploading ? 'A carregar...' : (form.invoice_file_url ? 'Substituir ficheiro' : 'Carregar PDF, JPG ou PNG')}
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }}
+                  disabled={uploading}
+                  onChange={async (ev) => {
+                    const file = ev.target.files?.[0]
+                    if (!file || !editingId) return
+                    setUploading(true)
+                    const ext = file.name.split('.').pop()
+                    const path = `invoices/${editingId}.${ext}`
+                    const { error } = await supabase.storage.from('invoices').upload(path, file, { upsert: true })
+                    if (error) {
+                      alert('Erro ao carregar. Verifique se o bucket "invoices" existe no Storage.')
+                      setUploading(false); return
+                    }
+                    const { data: urlData } = supabase.storage.from('invoices').getPublicUrl(path)
+                    await supabase.from('expenses').update({ invoice_file_url: urlData.publicUrl } as never).eq('id', editingId)
+                    setForm({ ...form, invoice_file_url: urlData.publicUrl })
+                    setUploading(false)
+                  }} />
+              </label>
+              {!editingId && (
+                <p style={{ fontSize: '0.6875rem', color: '#a8a29e', marginTop: '0.375rem', textAlign: 'center' }}>
+                  Guarde primeiro a despesa, depois pode anexar o ficheiro ao editar.
+                </p>
+              )}
             </div>
           </div>
 
