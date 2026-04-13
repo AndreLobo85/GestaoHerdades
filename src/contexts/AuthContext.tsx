@@ -12,6 +12,9 @@ interface AuthContextType {
   isAdmin: boolean
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
+  updateProfile: (updates: { full_name?: string; avatar_url?: string | null }) => Promise<{ error: string | null }>
+  updatePassword: (newPassword: string) => Promise<{ error: string | null }>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -72,6 +75,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null)
   }
 
+  const refreshProfile = async () => {
+    if (session?.user) await fetchProfile(session.user.id)
+  }
+
+  const updateProfile = async (updates: { full_name?: string; avatar_url?: string | null }) => {
+    if (!session?.user) return { error: 'Nao autenticado' }
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates as never)
+      .eq('id', session.user.id)
+    if (error) return { error: error.message }
+    await fetchProfile(session.user.id)
+    return { error: null }
+  }
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) return { error: error.message }
+    return { error: null }
+  }
+
   return (
     <AuthContext.Provider value={{
       session,
@@ -81,6 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: profile?.role === 'admin',
       signIn,
       signOut,
+      updateProfile,
+      updatePassword,
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

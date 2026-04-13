@@ -1,5 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import UserProfileModal from './UserProfileModal'
 
 const allSideItems = [
   { to: '/atividades', icon: 'timer', label: 'Horas/Atividades', adminOnly: false },
@@ -24,7 +26,8 @@ const allMobileItems = [
 ]
 
 export default function Layout() {
-  const { isAdmin, profile, signOut } = useAuth()
+  const { isAdmin, profile } = useAuth()
+  const [profileOpen, setProfileOpen] = useState(false)
 
   const sideItems = allSideItems.filter(i => !i.adminOnly || isAdmin)
   const topItems = allTopItems.filter(i => !i.adminOnly || isAdmin)
@@ -34,8 +37,11 @@ export default function Layout() {
     ? profile.full_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     : '?'
 
+  const avatarUrl = profile?.avatar_url
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+      <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
       {/* Top Nav */}
       <header className="top-nav">
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
@@ -62,13 +68,12 @@ export default function Layout() {
               <span className="material-symbols-outlined">settings</span>
             </NavLink>
           )}
-          <button onClick={signOut} title="Terminar sessao"
-            style={{ padding: '0.5rem', color: '#78716c', borderRadius: '9999px', display: 'flex', background: 'none', border: 'none', cursor: 'pointer' }}>
-            <span className="material-symbols-outlined">logout</span>
+          <button onClick={() => setProfileOpen(true)} title="O meu perfil"
+            style={{ width: 32, height: 32, borderRadius: '50%', background: avatarUrl ? 'transparent' : 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.6875rem', fontWeight: 700, border: 'none', cursor: 'pointer', padding: 0, overflow: 'hidden' }}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+            ) : initials}
           </button>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.6875rem', fontWeight: 700 }}>
-            {initials}
-          </div>
         </div>
       </header>
 
@@ -91,15 +96,16 @@ export default function Layout() {
 
           {/* User info + logout */}
           <div style={{ borderTop: '1px solid #e7e5e4', paddingTop: '1rem', marginBottom: '5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', marginBottom: '0.75rem' }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
-                {initials}
+            <button onClick={() => setProfileOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', marginBottom: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', borderRadius: 'var(--radius-sm)', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f5f5f4')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarUrl ? 'transparent' : 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0, overflow: 'hidden' }}>
+                {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} /> : initials}
               </div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontWeight: 600, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile?.full_name || 'Utilizador'}</p>
+                <p style={{ fontWeight: 600, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--on-surface)' }}>{profile?.full_name || 'Utilizador'}</p>
                 <p style={{ fontSize: '0.625rem', color: '#a8a29e', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>{profile?.role || 'utilizador'}</p>
               </div>
-            </div>
+            </button>
             <button className="btn-primary" onClick={() => window.location.href = '/atividades'}
               style={{ width: '100%' }}>
               <span className="material-symbols-outlined">add</span>
