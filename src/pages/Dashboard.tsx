@@ -28,7 +28,6 @@ export default function Dashboard() {
   const [month, setMonth] = useState(nowDate.getMonth() + 1)
   const [stats, setStats] = useState<Stats>({ employees: 0, hoursThisMonth: 0, fuelThisMonth: 0, feedLogsThisMonth: 0, activitiesThisMonth: 0, expensesThisMonth: 0 })
   const [recent, setRecent] = useState<Activity[]>([])
-  const [allActivities, setAllActivities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState<string | null>(null)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
@@ -67,8 +66,6 @@ export default function Dashboard() {
         expensesThisMonth: expData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0),
       })
       setRecent((rec.data as Activity[]) ?? [])
-      const { data: allAct } = await supabase.from('activities').select('*, employee:employees(*), activity_type:activity_types(*)').gte('date', som).lt('date', eom).order('date', { ascending: false })
-      setAllActivities(allAct ?? [])
       setLoading(false)
     }
     load()
