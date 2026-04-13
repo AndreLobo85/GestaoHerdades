@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/ui/Modal'
 import { useFeedItems } from '../lib/store'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
 import type { FeedLog } from '../types/database'
 
 export default function Feed() {
+  const { isAdmin } = useAuth()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [logs, setLogs] = useState<FeedLog[]>([])
   const [allMonth, setAllMonth] = useState<FeedLog[]>([])
@@ -118,9 +120,11 @@ export default function Feed() {
                 <span className="material-symbols-outlined text-secondary">restaurant</span>
                 <h3 className="font-display" style={{ fontWeight: 700, fontSize: '1.125rem' }}>Composicao da Diaria</h3>
               </div>
-              <button className="btn-ghost" onClick={() => setItemModal(true)} style={{ fontSize: '0.75rem' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>settings</span>Gerir Itens
-              </button>
+              {isAdmin && (
+                <button className="btn-ghost" onClick={() => setItemModal(true)} style={{ fontSize: '0.75rem' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>settings</span>Gerir Itens
+                </button>
+              )}
             </div>
             <form onSubmit={handleSubmit}>
               {activeItems.map(item => (
@@ -176,7 +180,7 @@ export default function Feed() {
                 {logs.map(l => (
                   <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-low)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
                     <div><p style={{ fontSize: '0.75rem', fontWeight: 600 }}>{l.feed_item?.name}</p><p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{l.quantity} {l.feed_item?.unit}</p></div>
-                    <button onClick={() => handleDelete(l.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button>
+                    {isAdmin && <button onClick={() => handleDelete(l.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button>}
                   </div>
                 ))}
               </div>

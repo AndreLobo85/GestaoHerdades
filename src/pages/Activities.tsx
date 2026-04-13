@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getDaysInMonth, startOfMonth, getDay, format } from 'date-fns'
 import { pt } from 'date-fns/locale'
 import { useEmployees, useActivityTypes } from '../lib/store'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
 import type { Activity, Profile } from '../types/database'
@@ -12,7 +13,7 @@ const TYPE_COLORS: Record<string, string> = {
 }
 function getTypeColor(name?: string) { return TYPE_COLORS[name ?? ''] ?? '#78716c' }
 
-function ActivityCard({ activity: a, onDelete }: { activity: Activity; onDelete: () => void }) {
+function ActivityCard({ activity: a, onDelete }: { activity: Activity; onDelete?: () => void }) {
   const [open, setOpen] = useState(false)
   const initials = (a.employee?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const color = getTypeColor(a.activity_type?.name)
@@ -38,9 +39,11 @@ function ActivityCard({ activity: a, onDelete }: { activity: Activity; onDelete:
           {a.description && (
             <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#a8a29e', transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }}>expand_more</span>
           )}
-          <button onClick={(e) => { e.stopPropagation(); onDelete() }} style={{ padding: 4, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer' }}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span>
-          </button>
+          {onDelete && (
+            <button onClick={(e) => { e.stopPropagation(); onDelete() }} style={{ padding: 4, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer' }}>
+              <span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span>
+            </button>
+          )}
         </div>
       </div>
       {/* Expanded description */}
@@ -62,6 +65,7 @@ function ActivityCard({ activity: a, onDelete }: { activity: Activity; onDelete:
 }
 
 export default function Activities() {
+  const { isAdmin } = useAuth()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -326,7 +330,7 @@ export default function Activities() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {dayActs.map(a => (
-                  <ActivityCard key={a.id} activity={a} onDelete={() => handleDelete(a.id)} />
+                  <ActivityCard key={a.id} activity={a} onDelete={isAdmin ? () => handleDelete(a.id) : undefined} />
                 ))}
               </div>
             </div>

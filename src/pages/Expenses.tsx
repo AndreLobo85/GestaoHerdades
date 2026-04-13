@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/ui/Modal'
 import { useVehicles, useExpenseCategories } from '../lib/store'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
 import type { Expense, ExpenseCategory, GeneralExpense } from '../types/database'
 
 /* ── Vehicle Expenses Sub-view ─────────────────────────── */
 function VehicleExpenses() {
+  const { isAdmin } = useAuth()
   const { data: vehicles } = useVehicles()
   const activeVehicles = vehicles.filter(v => v.active)
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null)
@@ -165,16 +167,18 @@ function VehicleExpenses() {
                           </button>
                         )}
                       </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                          <button onClick={() => handleEdit(exp)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#78716c' }}>edit</span>
-                          </button>
-                          <button onClick={() => handleDelete(exp.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--error)' }}>delete</span>
-                          </button>
-                        </div>
-                      </td>
+                      {isAdmin && (
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <button onClick={() => handleEdit(exp)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#78716c' }}>edit</span>
+                            </button>
+                            <button onClick={() => handleDelete(exp.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--error)' }}>delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -241,6 +245,7 @@ function VehicleExpenses() {
 
 /* ── General Category Expenses Sub-view ────────────────── */
 function CategoryExpenses({ category }: { category: ExpenseCategory }) {
+  const { isAdmin } = useAuth()
   const [expenses, setExpenses] = useState<GeneralExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -319,16 +324,18 @@ function CategoryExpenses({ category }: { category: ExpenseCategory }) {
                   <td style={{ fontSize: '0.875rem', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exp.description || '—'}</td>
                   <td style={{ fontSize: '0.8125rem', color: '#78716c' }}>{exp.invoice_number || '—'}</td>
                   <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.875rem' }}>{exp.invoice_amount.toFixed(2)} €</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.25rem' }}>
-                      <button onClick={() => handleEdit(exp)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#78716c' }}>edit</span>
-                      </button>
-                      <button onClick={() => handleDelete(exp.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--error)' }}>delete</span>
-                      </button>
-                    </div>
-                  </td>
+                  {isAdmin && (
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <button onClick={() => handleEdit(exp)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#78716c' }}>edit</span>
+                        </button>
+                        <button onClick={() => handleDelete(exp.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--error)' }}>delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
