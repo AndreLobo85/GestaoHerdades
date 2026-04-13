@@ -37,6 +37,17 @@ export default function Fuel() {
       logs.map(f => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.vehicle?.plate ?? '', f.fuel_type === 'agricola' ? 'Agricola' : 'Rodoviario', String(f.hours_or_km), String(f.liters)]))
   }
   const totalLiters = logs.reduce((s, f) => s + f.liters, 0)
+  const totalKm = logs.reduce((s, f) => s + f.hours_or_km, 0)
+  const avgConsumption = totalKm > 0 ? (totalLiters / totalKm) * 100 : 0
+
+  // Per-vehicle stats
+  const vehicleStats: Record<string, { liters: number; km: number; count: number }> = {}
+  logs.forEach(f => {
+    if (!vehicleStats[f.vehicle_id]) vehicleStats[f.vehicle_id] = { liters: 0, km: 0, count: 0 }
+    vehicleStats[f.vehicle_id].liters += f.liters
+    vehicleStats[f.vehicle_id].km += f.hours_or_km
+    vehicleStats[f.vehicle_id].count++
+  })
 
   return (
     <div>
@@ -136,21 +147,44 @@ export default function Fuel() {
                     </div>
                     <div><p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{v.brand} {v.model}</p><p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{v.plate}</p></div>
                   </div>
-                  <span className="badge-green" style={{ fontSize: '0.5625rem' }}>Registo Rapido</span>
+                  <div style={{ textAlign: 'right' }}>
+                    {vehicleStats[v.id] ? (
+                      <>
+                        <p style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{vehicleStats[v.id].km > 0 ? ((vehicleStats[v.id].liters / vehicleStats[v.id].km) * 100).toFixed(1) : '—'} <span style={{ fontSize: '0.625rem', color: '#a8a29e', fontWeight: 600 }}>L/100km</span></p>
+                        <p style={{ fontSize: '0.5625rem', color: '#a8a29e' }}>{vehicleStats[v.id].liters.toFixed(0)}L em {vehicleStats[v.id].count} abast.</p>
+                      </>
+                    ) : (
+                      <span className="badge-green" style={{ fontSize: '0.5625rem' }}>Sem registos</span>
+                    )}
+                  </div>
                 </div>
               ))}
               {activeVehicles.length === 0 && <p style={{ textAlign: 'center', fontSize: '0.875rem', color: '#a8a29e', padding: '1rem' }}>Nenhum veiculo registado</p>}
             </div>
           </div>
 
-          <div style={{ background: '#2e3131', borderRadius: 'var(--radius-lg)', padding: '2rem', color: 'white', position: 'relative', overflow: 'hidden' }}>
-            <p className="text-label" style={{ color: '#78716c', marginBottom: '0.5rem' }}>Consumo Mensal</p>
-            <h3 className="font-display" style={{ fontSize: '2.25rem', fontWeight: 900 }}>{totalLiters.toFixed(1)} <span style={{ fontSize: '1rem', fontWeight: 700, color: '#78716c' }}>Litros</span></h3>
-            <p style={{ fontSize: '0.875rem', color: '#78716c', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>trending_down</span>-4.2% vs mes anterior
-            </p>
-            <div style={{ position: 'absolute', right: -16, bottom: -16, opacity: 0.1 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 100, fontVariationSettings: "'FILL' 1" }}>local_gas_station</span>
+          {/* Summary card */}
+          <div style={{ background: '#2e3131', borderRadius: 'var(--radius-lg)', padding: '1.5rem', color: 'white', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <p style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c', marginBottom: '0.25rem' }}>Total Abastecido</p>
+                <h3 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 900 }}>{totalLiters.toFixed(1)}<span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#78716c' }}> L</span></h3>
+              </div>
+              <div>
+                <p style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c', marginBottom: '0.25rem' }}>Media Consumo</p>
+                <h3 className="font-display" style={{ fontSize: '1.75rem', fontWeight: 900 }}>
+                  {avgConsumption > 0 ? avgConsumption.toFixed(1) : '—'}
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#78716c' }}> L/100km</span>
+                </h3>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8125rem', color: '#a8a29e' }}>
+              <span>{logs.length} abastecimento{logs.length !== 1 ? 's' : ''}</span>
+              <span>·</span>
+              <span>{totalKm.toFixed(0)} km registados</span>
+            </div>
+            <div style={{ position: 'absolute', right: -16, bottom: -16, opacity: 0.08 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 80, fontVariationSettings: "'FILL' 1" }}>local_gas_station</span>
             </div>
           </div>
         </div>
