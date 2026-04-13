@@ -100,6 +100,15 @@ export interface FeedItem {
   active: boolean
 }
 
+export type UserRole = 'admin' | 'utilizador'
+
+export interface Profile {
+  id: string
+  full_name: string
+  role: UserRole
+  created_at: string
+}
+
 export interface FeedLog {
   id: string
   date: string

@@ -1,27 +1,39 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
-const sideItems = [
-  { to: '/atividades', icon: 'timer', label: 'Horas/Atividades' },
-  { to: '/gasoleo', icon: 'local_gas_station', label: 'Consumo Gasoleo' },
-  { to: '/alimentacao', icon: 'agriculture', label: 'Alimentacao Animal' },
+const allSideItems = [
+  { to: '/atividades', icon: 'timer', label: 'Horas/Atividades', adminOnly: false },
+  { to: '/gasoleo', icon: 'local_gas_station', label: 'Consumo Gasoleo', adminOnly: false },
+  { to: '/alimentacao', icon: 'agriculture', label: 'Alimentacao Animal', adminOnly: false },
+  { to: '/definicoes', icon: 'settings', label: 'Definicoes', adminOnly: true },
 ]
 
-const topItems = [
-  { to: '/', label: 'Dashboard' },
-  { to: '/atividades', label: 'Horas/Atividades' },
-  { to: '/gasoleo', label: 'Consumo Gasoleo' },
-  { to: '/alimentacao', label: 'Alimentacao Animal' },
+const allTopItems = [
+  { to: '/', label: 'Dashboard', adminOnly: false },
+  { to: '/atividades', label: 'Horas/Atividades', adminOnly: false },
+  { to: '/gasoleo', label: 'Consumo Gasoleo', adminOnly: false },
+  { to: '/alimentacao', label: 'Alimentacao Animal', adminOnly: false },
 ]
 
-const mobileItems = [
-  { to: '/', icon: 'dashboard', label: 'Painel' },
-  { to: '/atividades', icon: 'history', label: 'Horas' },
-  { to: '/gasoleo', icon: 'ev_station', label: 'Gasoleo' },
-  { to: '/alimentacao', icon: 'pets', label: 'Alimentar' },
-  { to: '/definicoes', icon: 'person', label: 'Perfil' },
+const allMobileItems = [
+  { to: '/', icon: 'dashboard', label: 'Painel', adminOnly: false },
+  { to: '/atividades', icon: 'history', label: 'Horas', adminOnly: false },
+  { to: '/gasoleo', icon: 'ev_station', label: 'Gasoleo', adminOnly: false },
+  { to: '/alimentacao', icon: 'pets', label: 'Alimentar', adminOnly: false },
+  { to: '/definicoes', icon: 'settings', label: 'Config', adminOnly: true },
 ]
 
 export default function Layout() {
+  const { isAdmin, profile, signOut } = useAuth()
+
+  const sideItems = allSideItems.filter(i => !i.adminOnly || isAdmin)
+  const topItems = allTopItems.filter(i => !i.adminOnly || isAdmin)
+  const mobileItems = allMobileItems.filter(i => !i.adminOnly || isAdmin)
+
+  const initials = profile?.full_name
+    ? profile.full_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    : '?'
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       {/* Top Nav */}
@@ -44,12 +56,18 @@ export default function Layout() {
             ))}
           </nav>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <NavLink to="/definicoes" style={{ padding: '0.5rem', color: '#78716c', borderRadius: '9999px', display: 'flex' }}>
-            <span className="material-symbols-outlined">settings</span>
-          </NavLink>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-highest)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--on-surface-variant)' }}>person</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {isAdmin && (
+            <NavLink to="/definicoes" style={{ padding: '0.5rem', color: '#78716c', borderRadius: '9999px', display: 'flex' }}>
+              <span className="material-symbols-outlined">settings</span>
+            </NavLink>
+          )}
+          <button onClick={signOut} title="Terminar sessao"
+            style={{ padding: '0.5rem', color: '#78716c', borderRadius: '9999px', display: 'flex', background: 'none', border: 'none', cursor: 'pointer' }}>
+            <span className="material-symbols-outlined">logout</span>
+          </button>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.6875rem', fontWeight: 700 }}>
+            {initials}
           </div>
         </div>
       </header>
@@ -70,16 +88,28 @@ export default function Layout() {
               </NavLink>
             ))}
           </nav>
-          <button className="btn-primary" onClick={() => window.location.href = '/atividades'}
-            style={{ marginBottom: '5rem', width: '100%' }}>
-            <span className="material-symbols-outlined">add</span>
-            Novo Registo
-          </button>
+
+          {/* User info + logout */}
+          <div style={{ borderTop: '1px solid #e7e5e4', paddingTop: '1rem', marginBottom: '5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', marginBottom: '0.75rem' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
+                {initials}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontWeight: 600, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile?.full_name || 'Utilizador'}</p>
+                <p style={{ fontSize: '0.625rem', color: '#a8a29e', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>{profile?.role || 'utilizador'}</p>
+              </div>
+            </div>
+            <button className="btn-primary" onClick={() => window.location.href = '/atividades'}
+              style={{ width: '100%' }}>
+              <span className="material-symbols-outlined">add</span>
+              Novo Registo
+            </button>
+          </div>
         </aside>
 
         {/* Main */}
-        <main style={{ flex: 1, padding: '1.5rem', paddingBottom: '5rem', background: 'var(--bg)' }}
-          className="md:p-8 lg:p-10">
+        <main style={{ flex: 1, padding: '1.5rem', paddingBottom: '5rem', background: 'var(--bg)' }}>
           <Outlet />
         </main>
       </div>
@@ -89,13 +119,13 @@ export default function Layout() {
         {mobileItems.map(item => (
           <NavLink key={item.to} to={item.to} end={item.to === '/'}
             style={({ isActive }) => ({
-              display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isActive ? '0.75rem' : '0.5rem',
+              display: 'flex', flexDirection: 'column' as const, alignItems: 'center', padding: isActive ? '0.75rem' : '0.5rem',
               background: isActive ? '#3f6212' : 'transparent', color: isActive ? 'white' : '#a8a29e',
               borderRadius: isActive ? '1rem' : '0', transform: isActive ? 'translateY(-0.5rem) scale(1.1)' : 'none',
               textDecoration: 'none', transition: 'all 0.3s',
             })}>
             <span className="material-symbols-outlined">{item.icon}</span>
-            <span style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.25rem' }}>{item.label}</span>
+            <span style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: '0.25rem' }}>{item.label}</span>
           </NavLink>
         ))}
       </nav>
