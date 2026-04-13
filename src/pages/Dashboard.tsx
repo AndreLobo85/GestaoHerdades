@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import * as XLSX from 'xlsx'
+import XLSX from 'xlsx-js-style'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/export'
 import type { Activity } from '../types/database'
@@ -61,11 +61,100 @@ export default function Dashboard() {
     load()
   }, [])
 
+  // Styling helpers
+  const headerStyle = {
+    font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+    fill: { fgColor: { rgb: '1D6F42' } },
+    border: { bottom: { style: 'medium', color: { rgb: '155C35' } } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  }
+  const titleStyle = {
+    font: { bold: true, sz: 14, color: { rgb: '1D6F42' } },
+    alignment: { horizontal: 'left' },
+  }
+  const subtitleStyle = {
+    font: { sz: 9, color: { rgb: '999999' } },
+    alignment: { horizontal: 'left' },
+  }
+  const cellStyle = {
+    border: {
+      top: { style: 'thin', color: { rgb: 'E5E5E5' } },
+      bottom: { style: 'thin', color: { rgb: 'E5E5E5' } },
+      left: { style: 'thin', color: { rgb: 'E5E5E5' } },
+      right: { style: 'thin', color: { rgb: 'E5E5E5' } },
+    },
+    alignment: { vertical: 'center' },
+    font: { sz: 10 },
+  }
+  const numStyle = { ...cellStyle, alignment: { horizontal: 'right', vertical: 'center' as const }, font: { sz: 10, bold: true } }
+  const totalLabelStyle = {
+    font: { bold: true, sz: 11, color: { rgb: '1D6F42' } },
+    fill: { fgColor: { rgb: 'F0FDF4' } },
+    border: { top: { style: 'medium', color: { rgb: '1D6F42' } }, bottom: { style: 'medium', color: { rgb: '1D6F42' } } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+  }
+  const totalValueStyle = {
+    ...totalLabelStyle,
+    alignment: { horizontal: 'right', vertical: 'center' as const },
+    font: { bold: true, sz: 12, color: { rgb: '1D6F42' } },
+  }
+  const altRowStyle = {
+    ...cellStyle,
+    fill: { fgColor: { rgb: 'FAFAFA' } },
+  }
+
+  function buildSheet(title: string, period: string, headers: string[], rows: any[][], colWidths: number[], totalCol?: number) {
+    // Title row + subtitle + blank + headers + data + total
+    const aoa: any[][] = [
+      [title], [period], [], headers, ...rows,
+    ]
+    if (totalCol !== undefined && rows.length > 0) {
+      const totalRow = headers.map(() => '')
+      totalRow[totalCol - 1] = 'TOTAL'
+      totalRow[totalCol] = rows.reduce((s, r) => s + (Number(r[totalCol]) || 0), 0)
+      aoa.push(totalRow)
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+
+    // Column widths
+    ws['!cols'] = colWidths.map(w => ({ wch: w }))
+
+    // Merge title across columns
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
+    ]
+
+    // Apply styles
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: C })
+        if (!ws[addr]) ws[addr] = { v: '', t: 's' }
+        if (R === 0) ws[addr].s = titleStyle
+        else if (R === 1) ws[addr].s = subtitleStyle
+        else if (R === 3) ws[addr].s = headerStyle
+        else if (R > 3 && totalCol !== undefined && R === range.e.r) {
+          ws[addr].s = C === totalCol ? totalValueStyle : totalLabelStyle
+        } else if (R > 3) {
+          const isAlt = (R - 4) % 2 === 1
+          ws[addr].s = typeof rows[R - 4]?.[C] === 'number' ? { ...numStyle, ...(isAlt ? { fill: altRowStyle.fill } : {}) } : (isAlt ? altRowStyle : cellStyle)
+        }
+      }
+    }
+
+    // Row heights
+    ws['!rows'] = [{ hpt: 28 }, { hpt: 16 }, { hpt: 8 }, { hpt: 24 }]
+
+    return ws
+  }
+
   const handleExportAll = async () => {
     setExporting('all')
     const som = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+    const period = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${new Date().getFullYear()}`
 
-    // Fetch all data in parallel
     const [fuelRes, feedRes, expensesRes, genExpRes] = await Promise.all([
       supabase.from('fuel_logs').select('*, vehicle:vehicles(*)').gte('date', som).order('date', { ascending: false }),
       supabase.from('feed_logs').select('*, feed_item:feed_items(*)').gte('date', som).order('date', { ascending: false }),
@@ -76,39 +165,44 @@ export default function Dashboard() {
     const wb = XLSX.utils.book_new()
 
     // Tab 1: Atividades
-    const actSheet = XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, buildSheet(
+      'Atividades', period,
       ['Data', 'Funcionario', 'Atividade', 'Horas', 'Descricao'],
-      ...allActivities.map((a: any) => [formatDate(a.date), a.employee?.name ?? '', a.activity_type?.name ?? '', a.hours, a.description ?? '']),
-    ])
-    XLSX.utils.book_append_sheet(wb, actSheet, 'Atividades')
+      allActivities.map((a: any) => [formatDate(a.date), a.employee?.name ?? '', a.activity_type?.name ?? '', a.hours, a.description ?? '']),
+      [14, 22, 16, 10, 35], 3
+    ), 'Atividades')
 
     // Tab 2: Gasoleo
-    const fuelSheet = XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, buildSheet(
+      'Consumo de Gasoleo', period,
       ['Data', 'Veiculo', 'Tipo', 'KM/Horas', 'Litros', 'Notas'],
-      ...(fuelRes.data ?? []).map((f: any) => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.fuel_type, f.hours_or_km, f.liters, f.notes ?? '']),
-    ])
-    XLSX.utils.book_append_sheet(wb, fuelSheet, 'Gasoleo')
+      (fuelRes.data ?? []).map((f: any) => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.fuel_type, f.hours_or_km, f.liters, f.notes ?? '']),
+      [14, 22, 14, 12, 10, 30], 4
+    ), 'Gasoleo')
 
     // Tab 3: Alimentacao
-    const feedSheet = XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, buildSheet(
+      'Alimentacao Animal', period,
       ['Data', 'Item', 'Quantidade', 'Unidade', 'Notas'],
-      ...(feedRes.data ?? []).map((f: any) => [formatDate(f.date), f.feed_item?.name ?? '', f.quantity, f.feed_item?.unit ?? '', f.notes ?? '']),
-    ])
-    XLSX.utils.book_append_sheet(wb, feedSheet, 'Alimentacao')
+      (feedRes.data ?? []).map((f: any) => [formatDate(f.date), f.feed_item?.name ?? '', f.quantity, f.feed_item?.unit ?? '', f.notes ?? '']),
+      [14, 24, 14, 12, 30], 2
+    ), 'Alimentacao')
 
     // Tab 4: Despesas Veiculos
-    const expSheet = XLSX.utils.aoa_to_sheet([
-      ['Data', 'Veiculo', 'KM', 'Descricao', 'N Fatura', 'Valor'],
-      ...(expensesRes.data ?? []).map((e: any) => [formatDate(e.date), e.vehicle ? `${e.vehicle.brand} ${e.vehicle.model}` : '', e.km, e.description, e.invoice_number, e.invoice_amount]),
-    ])
-    XLSX.utils.book_append_sheet(wb, expSheet, 'Despesas Veiculos')
+    XLSX.utils.book_append_sheet(wb, buildSheet(
+      'Despesas de Veiculos', period,
+      ['Data', 'Veiculo', 'KM', 'Descricao', 'N Fatura', 'Valor (EUR)'],
+      (expensesRes.data ?? []).map((e: any) => [formatDate(e.date), e.vehicle ? `${e.vehicle.brand} ${e.vehicle.model}` : '', e.km, e.description, e.invoice_number, e.invoice_amount]),
+      [14, 22, 10, 28, 16, 14], 5
+    ), 'Despesas Veiculos')
 
     // Tab 5: Despesas Gerais
-    const genSheet = XLSX.utils.aoa_to_sheet([
-      ['Data', 'Categoria', 'Descricao', 'N Fatura', 'Valor'],
-      ...(genExpRes.data ?? []).map((e: any) => [formatDate(e.date), e.category?.name ?? '', e.description, e.invoice_number, e.invoice_amount]),
-    ])
-    XLSX.utils.book_append_sheet(wb, genSheet, 'Despesas Gerais')
+    XLSX.utils.book_append_sheet(wb, buildSheet(
+      'Despesas Gerais', period,
+      ['Data', 'Categoria', 'Descricao', 'N Fatura', 'Valor (EUR)'],
+      (genExpRes.data ?? []).map((e: any) => [formatDate(e.date), e.category?.name ?? '', e.description, e.invoice_number, e.invoice_amount]),
+      [14, 18, 28, 16, 14], 4
+    ), 'Despesas Gerais')
 
     XLSX.writeFile(wb, `gestao_herdades_${new Date().toISOString().slice(0, 7)}.xlsx`)
     setTimeout(() => setExporting(null), 1500)
