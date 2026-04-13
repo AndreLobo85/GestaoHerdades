@@ -23,23 +23,37 @@ interface QuickAction {
 }
 
 export default function Dashboard() {
+  const nowDate = new Date()
+  const [year, setYear] = useState(nowDate.getFullYear())
+  const [month, setMonth] = useState(nowDate.getMonth() + 1)
   const [stats, setStats] = useState<Stats>({ employees: 0, hoursThisMonth: 0, fuelThisMonth: 0, feedLogsThisMonth: 0, activitiesThisMonth: 0, expensesThisMonth: 0 })
   const [recent, setRecent] = useState<Activity[]>([])
   const [allActivities, setAllActivities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState<string | null>(null)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+
+  const som = `${year}-${String(month).padStart(2, '0')}-01`
+  const eom = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`
+
+  const prevMonth = () => { if (month === 1) { setYear(year - 1); setMonth(12) } else setMonth(month - 1) }
+  const nextMonth = () => {
+    const isCurrentMonth = month === nowDate.getMonth() + 1 && year === nowDate.getFullYear()
+    if (isCurrentMonth) return
+    if (month === 12) { setYear(year + 1); setMonth(1) } else setMonth(month + 1)
+  }
+  const isCurrentMonth = month === nowDate.getMonth() + 1 && year === nowDate.getFullYear()
 
   useEffect(() => {
     async function load() {
-      const now = new Date()
-      const som = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+      setLoading(true)
       const [emp, act, fuel, feed, rec, expenses] = await Promise.all([
         supabase.from('employees').select('id', { count: 'exact', head: true }).eq('active', true),
-        supabase.from('activities').select('hours').gte('date', som),
-        supabase.from('fuel_logs').select('liters').gte('date', som),
-        supabase.from('feed_logs').select('id', { count: 'exact', head: true }).gte('date', som),
-        supabase.from('activities').select('*, employee:employees(*), activity_type:activity_types(*)').order('date', { ascending: false }).limit(5),
-        supabase.from('expenses').select('invoice_amount').gte('date', som),
+        supabase.from('activities').select('hours').gte('date', som).lt('date', eom),
+        supabase.from('fuel_logs').select('liters').gte('date', som).lt('date', eom),
+        supabase.from('feed_logs').select('id', { count: 'exact', head: true }).gte('date', som).lt('date', eom),
+        supabase.from('activities').select('*, employee:employees(*), activity_type:activity_types(*)').gte('date', som).lt('date', eom).order('date', { ascending: false }).limit(5),
+        supabase.from('expenses').select('invoice_amount').gte('date', som).lt('date', eom),
       ])
       const actData = (act.data as any[] ?? [])
       const fuelData = (fuel.data as any[] ?? [])
@@ -53,13 +67,12 @@ export default function Dashboard() {
         expensesThisMonth: expData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0),
       })
       setRecent((rec.data as Activity[]) ?? [])
-      // Fetch all activities for export
-      const { data: allAct } = await supabase.from('activities').select('*, employee:employees(*), activity_type:activity_types(*)').gte('date', som).order('date', { ascending: false })
+      const { data: allAct } = await supabase.from('activities').select('*, employee:employees(*), activity_type:activity_types(*)').gte('date', som).lt('date', eom).order('date', { ascending: false })
       setAllActivities(allAct ?? [])
       setLoading(false)
     }
     load()
-  }, [])
+  }, [year, month, som, eom])
 
   // ── Excel Export Engine ──────────────────────────────
   const thin = { style: 'thin', color: { rgb: 'D9D9D9' } }
@@ -197,24 +210,42 @@ export default function Dashboard() {
     return ws
   }
 
-  const handleExportAll = async () => {
-    setExporting('all')
-    const som = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
-    const period = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${new Date().getFullYear()}`
+  const handleExport = async (mode: 'month' | 'year' | 'all') => {
+    setExporting(mode)
+    let dateFrom: string
+    let dateTo: string
+    let period: string
+    const capMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1)
+    if (mode === 'month') {
+      dateFrom = som
+      dateTo = eom
+      period = `${capMonth} ${year}`
+    } else if (mode === 'year') {
+      dateFrom = `${year}-01-01`
+      dateTo = `${year + 1}-01-01`
+      period = `Ano ${year} (Jan–Dez)`
+    } else {
+      dateFrom = '2000-01-01'
+      dateTo = '2099-01-01'
+      period = 'Todos os dados'
+    }
 
-    const [fuelRes, feedRes, expensesRes, genExpRes] = await Promise.all([
-      supabase.from('fuel_logs').select('*, vehicle:vehicles(*)').gte('date', som).order('date', { ascending: false }),
-      supabase.from('feed_logs').select('*, feed_item:feed_items(*)').gte('date', som).order('date', { ascending: false }),
-      supabase.from('expenses').select('*, vehicle:vehicles(*)').gte('date', som).order('date', { ascending: false }),
-      supabase.from('general_expenses').select('*, category:expense_categories(*)').gte('date', som).order('date', { ascending: false }),
+    // Fetch all data for the selected range + activities
+    const [actRes, fuelRes, feedRes, expensesRes, genExpRes] = await Promise.all([
+      supabase.from('activities').select('*, employee:employees(*), activity_type:activity_types(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
+      supabase.from('fuel_logs').select('*, vehicle:vehicles(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
+      supabase.from('feed_logs').select('*, feed_item:feed_items(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
+      supabase.from('expenses').select('*, vehicle:vehicles(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
+      supabase.from('general_expenses').select('*, category:expense_categories(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
     ])
+    const exportActivities = actRes.data ?? []
 
     const fuelData = fuelRes.data ?? []
     const feedData = feedRes.data ?? []
     const expData = expensesRes.data ?? []
     const genData = genExpRes.data ?? []
 
-    const totalHours = allActivities.reduce((s: number, a: any) => s + (a.hours || 0), 0)
+    const totalHours = exportActivities.reduce((s: number, a: any) => s + (a.hours || 0), 0)
     const totalFuel = fuelData.reduce((s: number, f: any) => s + (f.liters || 0), 0)
     const totalExpV = expData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0)
     const totalExpG = genData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0)
@@ -224,7 +255,7 @@ export default function Dashboard() {
     // Tab 0: Resumo
     XLSX.utils.book_append_sheet(wb, buildResumoSheet(period, [
       { label: 'Horas de Trabalho', value: totalHours.toFixed(1) + 'h', theme: themes.atividades },
-      { label: 'Atividades Registadas', value: String(allActivities.length), theme: themes.atividades },
+      { label: 'Atividades Registadas', value: String(exportActivities.length), theme: themes.atividades },
       { label: 'Gasoleo Consumido', value: totalFuel.toFixed(0) + ' L', theme: themes.gasoleo },
       { label: 'Registos Alimentacao', value: String(feedData.length), theme: themes.alimentacao },
       { label: 'Despesas Veiculos', value: totalExpV.toFixed(2) + ' €', theme: themes.despVeic },
@@ -235,7 +266,7 @@ export default function Dashboard() {
     // Tab 1: Atividades
     XLSX.utils.book_append_sheet(wb, buildSheet('Atividades', period,
       ['Data', 'Funcionario', 'Atividade', 'Horas', 'Descricao'],
-      allActivities.map((a: any) => [formatDate(a.date), a.employee?.name ?? '', a.activity_type?.name ?? '', a.hours, a.description ?? '']),
+      exportActivities.map((a: any) => [formatDate(a.date), a.employee?.name ?? '', a.activity_type?.name ?? '', a.hours, a.description ?? '']),
       [14, 24, 18, 10, 38], 3, themes.atividades
     ), 'Atividades')
 
@@ -267,13 +298,13 @@ export default function Dashboard() {
       [14, 20, 30, 16, 14], 4, themes.despGeral
     ), 'Despesas Gerais')
 
-    XLSX.writeFile(wb, `gestao_herdades_${new Date().toISOString().slice(0, 7)}.xlsx`)
+    const fileSuffix = mode === 'month' ? `${year}-${String(month).padStart(2, '0')}` : mode === 'year' ? `${year}` : 'completo'
+    XLSX.writeFile(wb, `gestao_herdades_${fileSuffix}.xlsx`)
     setTimeout(() => setExporting(null), 1500)
   }
 
-  const now = new Date()
-  const monthName = now.toLocaleDateString('pt-PT', { month: 'long' })
-  const yearStr = now.getFullYear()
+  const monthName = new Date(year, month - 1).toLocaleDateString('pt-PT', { month: 'long' })
+  const yearStr = year
 
   const quickActions: QuickAction[] = [
     { label: 'Registar Atividade', icon: 'add_task', to: '/atividades', color: '#3a6843', bg: '#ecfccb' },
@@ -290,12 +321,23 @@ export default function Dashboard() {
   return (
     <div>
       {/* Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
         <div>
           <p style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--primary)', marginBottom: '0.25rem' }}>Painel de Operacoes</p>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: 'var(--on-surface)', letterSpacing: '-0.02em' }}>
-            {monthName.charAt(0).toUpperCase() + monthName.slice(1)} {yearStr}
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button onClick={prevMonth} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--surface-low)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#e5e5e5')} onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface-low)')}>
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_left</span>
+            </button>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: 'var(--on-surface)', letterSpacing: '-0.02em', minWidth: 200, textAlign: 'center' }}>
+              {monthName.charAt(0).toUpperCase() + monthName.slice(1)} {yearStr}
+            </h1>
+            <button onClick={nextMonth} disabled={isCurrentMonth}
+              style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: isCurrentMonth ? 'transparent' : 'var(--surface-low)', cursor: isCurrentMonth ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s', opacity: isCurrentMonth ? 0.25 : 1 }}
+              onMouseEnter={e => { if (!isCurrentMonth) e.currentTarget.style.background = '#e5e5e5' }} onMouseLeave={e => { if (!isCurrentMonth) e.currentTarget.style.background = 'var(--surface-low)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_right</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -382,25 +424,50 @@ export default function Dashboard() {
           </div>
 
           {/* Export */}
-          <div>
-            <button onClick={handleExportAll} disabled={loading || exporting === 'all'}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setExportMenuOpen(!exportMenuOpen)} disabled={loading || !!exporting}
               style={{
                 display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start',
                 padding: '1.25rem', borderRadius: '1rem', border: 'none', cursor: loading ? 'wait' : 'pointer',
                 width: '100%', transition: 'all 0.2s',
-                background: exporting === 'all' ? '#d4edda' : '#1d6f42',
+                background: exporting ? '#d4edda' : '#1d6f42',
                 color: 'white',
               }}
-              onMouseEnter={e => { if (exporting !== 'all') e.currentTarget.style.background = '#175c37' }}
-              onMouseLeave={e => { if (exporting !== 'all') e.currentTarget.style.background = '#1d6f42' }}>
+              onMouseEnter={e => { if (!exporting) e.currentTarget.style.background = '#175c37' }}
+              onMouseLeave={e => { if (!exporting) e.currentTarget.style.background = '#1d6f42' }}>
               <p style={{ fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>Exportar Dados</p>
-              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: exporting === 'all' ? '#1d6f42' : 'white' }}>
-                {exporting === 'all' ? 'Exportado!' : 'Export'}
+              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: exporting ? '#1d6f42' : 'white' }}>
+                {exporting ? 'Exportado!' : 'Export'}
               </h3>
-              <p style={{ fontSize: '0.6875rem', color: exporting === 'all' ? '#1d6f42' : 'rgba(255,255,255,0.5)', marginTop: '0.125rem' }}>
-                {exporting === 'all' ? 'Ficheiro transferido' : `Excel · ${monthName} · 5 tabs`}
+              <p style={{ fontSize: '0.6875rem', color: exporting ? '#1d6f42' : 'rgba(255,255,255,0.5)', marginTop: '0.125rem' }}>
+                {exporting ? 'Ficheiro transferido' : 'Excel · Clique para opcoes'}
               </p>
             </button>
+            {/* Dropdown menu */}
+            {exportMenuOpen && (
+              <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: '0.5rem', background: 'white', borderRadius: '0.875rem', boxShadow: '0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0eeec', overflow: 'hidden', zIndex: 10 }}>
+                <div style={{ padding: '0.625rem 0.875rem', borderBottom: '1px solid #f5f5f4' }}>
+                  <p style={{ fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a8a29e' }}>Exportar como Excel</p>
+                </div>
+                {[
+                  { label: `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${yearStr}`, sub: 'Mes selecionado', icon: 'calendar_month', mode: 'month' as const },
+                  { label: `Ano ${yearStr}`, sub: 'Janeiro a Dezembro', icon: 'date_range', mode: 'year' as const },
+                  { label: 'Todos os dados', sub: 'Desde o inicio', icon: 'database', mode: 'all' as const },
+                ].map(opt => (
+                  <button key={opt.mode} onClick={() => { setExportMenuOpen(false); handleExport(opt.mode) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.75rem 0.875rem', width: '100%', border: 'none', background: 'white', cursor: 'pointer', textAlign: 'left', transition: 'background 0.1s' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')} onMouseLeave={e => (e.currentTarget.style.background = 'white')}>
+                    <div style={{ width: 30, height: 30, borderRadius: '0.5rem', background: '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#1d6f42' }}>{opt.icon}</span>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--on-surface)' }}>{opt.label}</p>
+                      <p style={{ fontSize: '0.5625rem', color: '#a8a29e' }}>{opt.sub}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Team count */}
