@@ -4,7 +4,7 @@ import { pt } from 'date-fns/locale'
 import { useEmployees, useActivityTypes } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
-import type { Activity } from '../types/database'
+import type { Activity, Profile } from '../types/database'
 
 export default function Activities() {
   const now = new Date()
@@ -17,6 +17,18 @@ export default function Activities() {
   const { data: activityTypes } = useActivityTypes()
   const activeEmployees = employees.filter(e => e.active)
   const activeTypes = activityTypes.filter(t => t.active)
+  const [profiles, setProfiles] = useState<Profile[]>([])
+
+  useEffect(() => {
+    supabase.from('profiles').select('*').eq('status', 'active').order('full_name', { ascending: true })
+      .then(({ data }) => { if (data) setProfiles(data as Profile[]) })
+  }, [])
+
+  // Combine employees + profiles for the dropdown
+  const allWorkers = [
+    ...profiles.map(p => ({ id: p.id, name: p.full_name || p.email || 'Sem nome', source: 'profile' as const })),
+    ...activeEmployees.map(e => ({ id: e.id, name: e.name, source: 'employee' as const })),
+  ]
   const [form, setForm] = useState({ employee_id: '', activity_type_id: '', hours: '', description: '' })
 
   const fetchActivities = useCallback(async () => {
@@ -72,7 +84,7 @@ export default function Activities() {
             {[
               { value: loading ? '...' : `${totalHours}h`, label: 'Horas', color: 'var(--secondary)' },
               { value: String(activities.length), label: 'Registos', color: 'var(--on-surface)' },
-              { value: String(activeEmployees.length), label: 'Func.', color: 'var(--primary)' },
+              { value: String(allWorkers.length), label: 'Func.', color: 'var(--primary)' },
             ].map(s => (
               <div key={s.label} style={{ background: 'var(--surface-low)', padding: '0.375rem 0.75rem', borderRadius: '0.75rem', textAlign: 'center' }}>
                 <p style={{ fontSize: '1rem', fontWeight: 800, color: s.color, fontFamily: "'Manrope', sans-serif", lineHeight: 1.2 }}>{s.value}</p>
@@ -88,8 +100,8 @@ export default function Activities() {
 
       {/* Main grid — fills remaining height */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1rem', flex: 1, minHeight: 0, overflow: 'hidden' }} className="act-grid">
-        {/* Left: Calendar — compact */}
-        <div className="card" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Left: Calendar — compact, max height limited */}
+        <div className="card" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 'calc(100vh - 10rem)' }}>
           {/* Month nav */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexShrink: 0 }}>
             <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, fontFamily: "'Manrope', sans-serif", textTransform: 'capitalize' }}>{monthLabel}</h3>
@@ -153,7 +165,7 @@ export default function Activities() {
               <div style={{ position: 'relative' }}>
                 <select required value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} className="input-field" style={{ padding: '0.75rem' }}>
                   <option value="">Funcionario...</option>
-                  {activeEmployees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                  {allWorkers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
                 <span className="material-symbols-outlined" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#a8a29e', fontSize: 18 }}>expand_more</span>
               </div>
