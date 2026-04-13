@@ -7,7 +7,7 @@ import { exportToCSV, formatDate } from '../lib/export'
 import type { FuelLog, FuelType, Profile } from '../types/database'
 
 export default function Fuel() {
-  const { profile } = useAuth()
+  const { profile, isAdmin } = useAuth()
   const [logs, setLogs] = useState<FuelLog[]>([])
   const [_loading, setLoading] = useState(true)
   const [vehicleModal, setVehicleModal] = useState(false)
@@ -160,9 +160,11 @@ export default function Fuel() {
           <div className="card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 className="font-display" style={{ fontWeight: 700 }}>Frota Ativa</h3>
-              <button className="btn-secondary" onClick={() => setVehicleModal(true)} style={{ fontSize: '0.75rem' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add</span>Adicionar Veiculo
-              </button>
+              {isAdmin && (
+                <button className="btn-secondary" onClick={() => setVehicleModal(true)} style={{ fontSize: '0.75rem' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add</span>Adicionar Veiculo
+                </button>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {activeVehicles.map(v => (
