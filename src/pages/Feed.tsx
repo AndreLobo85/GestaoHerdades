@@ -13,7 +13,7 @@ export default function Feed() {
   const [allMonth, setAllMonth] = useState<FeedLog[]>([])
   const [_loading, setLoading] = useState(true)
   const [itemModal, setItemModal] = useState(false)
-  const { data: feedItems, insert: insertItem } = useFeedItems()
+  const { data: feedItems, insert: insertItem, update: updateItem, remove: removeItem } = useFeedItems()
   const { data: products, fetch: refetchProducts } = useProducts()
   const activeItems = feedItems.filter(i => i.active)
   const [quantities, setQuantities] = useState<Record<string, string>>({})
@@ -267,40 +267,74 @@ export default function Feed() {
         </div>
       </div>
 
-      {/* Modal: Add feed item from products */}
-      <Modal open={itemModal} onClose={() => setItemModal(false)} title="Adicionar Item de Alimentacao">
-        {availableProducts.length > 0 ? (
-          <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* Modal: Manage feed items */}
+      <Modal open={itemModal} onClose={() => setItemModal(false)} title="Gerir Itens de Alimentacao">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Current items list */}
+          {feedItems.length > 0 && (
             <div>
-              <label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Selecionar Produto do Stock</label>
-              <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="input-field" required>
-                <option value="">-- Escolha um produto --</option>
-                {availableProducts.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.unit}) — Stock: {p.current_quantity}</option>
+              <label className="text-label" style={{ display: 'block', marginBottom: 8, marginLeft: 4 }}>Itens Atuais</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {feedItems.map(item => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.75rem', background: item.active ? 'var(--surface-low)' : '#f5f5f4', borderRadius: 'var(--radius-sm)', opacity: item.active ? 1 : 0.5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--on-surface-variant)' }}>inventory_2</span>
+                      <div>
+                        <p style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{item.name}</p>
+                        <p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{item.unit}{item.product_id ? ' · Ligado ao stock' : ''}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <button type="button" onClick={async () => { await updateItem(item.id, { active: !item.active } as any) }} title={item.active ? 'Desativar' : 'Ativar'} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: item.active ? 'var(--primary)' : '#a8a29e' }}>{item.active ? 'visibility' : 'visibility_off'}</span>
+                      </button>
+                      <button type="button" onClick={async () => { if (confirm('Remover "' + item.name + '" da lista de alimentacao?')) { await removeItem(item.id) } }} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--error)' }}>delete</span>
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </select>
-              <p style={{ fontSize: '0.6875rem', color: '#a8a29e', marginTop: 6, marginLeft: 4 }}>
-                Os itens de alimentacao vem dos produtos registados no Stock. Ao submeter um registo, o stock e automaticamente deduzido.
+              </div>
+            </div>
+          )}
+
+          {/* Divider */}
+          {feedItems.length > 0 && availableProducts.length > 0 && (
+            <div style={{ borderTop: '1px solid var(--surface-mid)', paddingTop: '0.25rem' }} />
+          )}
+
+          {/* Add new item from stock */}
+          {availableProducts.length > 0 ? (
+            <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <label className="text-label" style={{ display: 'block', marginLeft: 4 }}>Adicionar Produto do Stock</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="input-field" required style={{ flex: 1 }}>
+                  <option value="">-- Escolha um produto --</option>
+                  {availableProducts.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.unit}) — Stock: {p.current_quantity}</option>
+                  ))}
+                </select>
+                <button type="submit" className="btn-primary" style={{ padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>Adicionar
+                </button>
+              </div>
+              <p style={{ fontSize: '0.6875rem', color: '#a8a29e', marginLeft: 4 }}>
+                Ao submeter um registo de alimentacao, o stock e automaticamente deduzido.
+              </p>
+            </form>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '1rem' }}>
+              <p style={{ fontSize: '0.8125rem', color: '#a8a29e' }}>
+                {products.filter(p => p.active).length === 0
+                  ? 'Nenhum produto registado no Stock.'
+                  : 'Todos os produtos do stock ja estao adicionados.'}
+              </p>
+              <p style={{ fontSize: '0.6875rem', color: '#a8a29e', marginTop: 4 }}>
+                Adicione novos produtos na pagina de Stock ou nas Definicoes.
               </p>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
-              <button type="button" onClick={() => setItemModal(false)} className="btn-ghost">Cancelar</button>
-              <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Adicionar</button>
-            </div>
-          </form>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#a8a29e', marginBottom: '0.75rem', display: 'block' }}>inventory_2</span>
-            <p style={{ fontSize: '0.875rem', color: '#a8a29e', marginBottom: '0.5rem' }}>
-              {products.filter(p => p.active).length === 0
-                ? 'Nenhum produto registado no Stock.'
-                : 'Todos os produtos do stock ja estao adicionados.'}
-            </p>
-            <p style={{ fontSize: '0.75rem', color: '#a8a29e' }}>
-              Adicione novos produtos na pagina de Stock ou nas Definicoes.
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </Modal>
 
       <style>{`
