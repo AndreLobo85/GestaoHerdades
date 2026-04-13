@@ -224,57 +224,52 @@ export default function Activities() {
               const typeEntries = Object.entries(typeHours)
               const hasActs = typeEntries.length > 0
 
-              // Build background: single color or split gradient
-              let cellBg = 'white'
-              if (hasActs) {
-                if (typeEntries.length === 1) {
-                  cellBg = getTypeColor(typeEntries[0][0]) + '18' // single color with alpha
-                } else {
-                  const colors = typeEntries.slice(0, 3).map(([n]) => getTypeColor(n) + '20')
-                  const pct = 100 / colors.length
-                  cellBg = `linear-gradient(to bottom, ${colors.map((c, i) => `${c} ${i * pct}%, ${c} ${(i + 1) * pct}%`).join(', ')})`
-                }
-              }
-
               return (
                 <button key={day} onClick={() => setSelectedDay(day)}
                   style={{
-                    background: sel ? 'rgba(255,183,131,0.18)' : cellBg,
-                    padding: '0.25rem 0.375rem',
-                    fontSize: '0.8125rem', textAlign: 'left', border: 'none', cursor: 'pointer',
+                    padding: 0, border: 'none', cursor: 'pointer',
                     outline: sel ? '2.5px solid #ffb783' : 'none', outlineOffset: -2,
-                    transition: 'all 0.15s', minHeight: 0, display: 'flex', flexDirection: 'column',
-                    position: 'relative',
+                    transition: 'all 0.15s', minHeight: 0,
+                    display: 'flex', flexDirection: 'column',
+                    position: 'relative', overflow: 'hidden',
+                    background: hasActs ? 'transparent' : 'white',
                   }}>
-                  {/* Day number row */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: hasActs ? 4 : 0 }}>
-                    {today ? (
-                      <span style={{ background: 'var(--primary)', color: 'white', width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 700 }}>{day}</span>
-                    ) : (
-                      <span style={{ fontWeight: hasActs ? 700 : 400, color: sel ? 'var(--primary)' : hasActs ? '#1a1a1a' : '#78716c', fontSize: '0.8125rem' }}>{day}</span>
-                    )}
-                  </div>
-                  {/* Activity type tags */}
+                  {/* Color fill — stacked bands that fill the entire cell */}
                   {hasActs && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%', flex: 1 }}>
-                      {typeEntries.slice(0, 3).map(([typeName, hours]) => {
-                        const c = getTypeColor(typeName)
-                        return (
-                          <div key={typeName} style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3,
-                            background: c + '22', borderLeft: `3px solid ${c}`, borderRadius: '0 4px 4px 0',
-                            padding: '2px 5px', width: '100%',
-                          }}>
-                            <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{typeName}</span>
-                            <span style={{ fontSize: '0.5625rem', fontWeight: 800, color: c, flexShrink: 0, lineHeight: 1.3 }}>{hours}h</span>
-                          </div>
-                        )
-                      })}
-                      {typeEntries.length > 3 && (
-                        <span style={{ fontSize: '0.5rem', color: '#78716c', fontWeight: 600, paddingLeft: 2 }}>+{typeEntries.length - 3} mais</span>
-                      )}
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
+                      {typeEntries.map(([typeName]) => (
+                        <div key={typeName} style={{ flex: 1, background: getTypeColor(typeName) + '25' }} />
+                      ))}
                     </div>
                   )}
+                  {/* Content overlay */}
+                  <div style={{ position: 'relative', zIndex: 1, padding: '0.25rem 0.375rem', display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
+                    {/* Day number */}
+                    <div style={{ marginBottom: hasActs ? 3 : 0 }}>
+                      {today ? (
+                        <span style={{ background: 'var(--primary)', color: 'white', width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 700 }}>{day}</span>
+                      ) : (
+                        <span style={{ fontWeight: hasActs ? 800 : 400, color: sel ? 'var(--primary)' : hasActs ? '#1a1a1a' : '#78716c', fontSize: '0.8125rem' }}>{day}</span>
+                      )}
+                    </div>
+                    {/* Type labels inside the colored bands */}
+                    {hasActs && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                        {typeEntries.slice(0, 3).map(([typeName, hours]) => {
+                          const c = getTypeColor(typeName)
+                          return (
+                            <div key={typeName} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, padding: '1px 4px', borderRadius: 3, background: c + '30' }}>
+                              <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{typeName}</span>
+                              <span style={{ fontSize: '0.5625rem', fontWeight: 800, color: c, flexShrink: 0 }}>{hours}h</span>
+                            </div>
+                          )
+                        })}
+                        {typeEntries.length > 3 && (
+                          <span style={{ fontSize: '0.5rem', color: '#555', fontWeight: 700, paddingLeft: 2 }}>+{typeEntries.length - 3}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </button>
               )
             })}
