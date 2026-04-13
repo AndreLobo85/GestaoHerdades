@@ -4,7 +4,8 @@ import type {
   Employee, ActivityType, Activity, Vehicle, FuelLog, FeedItem, FeedLog, ExpenseCategory, GeneralExpense, Product, StockMovement
 } from '../types/database'
 
-function useSupabaseTable<T extends { id: string }>(
+// I = Insert type (defaults to row without id/created_at for backwards compat)
+function useSupabaseTable<T extends { id: string }, I = Omit<T, 'id' | 'created_at'>>(
   table: string,
   orderBy: string = 'created_at',
   ascending: boolean = false
@@ -24,13 +25,13 @@ function useSupabaseTable<T extends { id: string }>(
 
   useEffect(() => { fetch() }, [fetch])
 
-  const insert = async (row: Omit<T, 'id' | 'created_at'>) => {
+  const insert = async (row: I) => {
     const { error } = await supabase.from(table).insert(row as never)
     if (!error) await fetch()
     return error
   }
 
-  const update = async (id: string, updates: Partial<T>) => {
+  const update = async (id: string, updates: Partial<I>) => {
     const { error } = await supabase.from(table).update(updates as never).eq('id', id)
     if (!error) await fetch()
     return error
@@ -103,8 +104,10 @@ export function useFuelLogs() {
   return { ...base, fetchByMonth }
 }
 
+type FeedItemInsert = Omit<FeedItem, 'id' | 'product'>
+
 export function useFeedItems() {
-  return useSupabaseTable<FeedItem>('feed_items', 'name', true)
+  return useSupabaseTable<FeedItem, FeedItemInsert>('feed_items', 'name', true)
 }
 
 export function useFeedLogs() {

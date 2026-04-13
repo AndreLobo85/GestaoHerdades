@@ -352,7 +352,7 @@ export default function SettingsPage() {
       {tab === 'users' && <AddUserModal open={modalOpen} onClose={() => setModalOpen(false)} onSaved={() => { setModalOpen(false); fetchUsers() }} />}
       {tab === 'activities' && <AddSimpleModal open={modalOpen} onClose={() => setModalOpen(false)} title="Nova Atividade" label="Nome" placeholder="Ex: Poda, Rega..." onSave={async n => { await activityTypes.insert({ name: n, active: true }); setModalOpen(false) }} />}
       {tab === 'vehicles' && <AddVehicleModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async v => { await vehicles.insert(v); setModalOpen(false) }} />}
-      {tab === 'feed' && <AddFeedItemModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async (n, u) => { await feedItems.insert({ name: n, unit: u, active: true, product_id: null } as any); setModalOpen(false) }} />}
+      {tab === 'feed' && <AddFeedItemModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async (n, u) => { await feedItems.insert({ name: n, unit: u, active: true, product_id: null }); setModalOpen(false) }} />}
       {tab === 'products' && <AddProductModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async (name, unit, minAlert) => { await productsStore.insert({ name, unit, min_stock_alert: minAlert, current_quantity: 0, active: true } as any); setModalOpen(false) }} />}
     </div>
   )

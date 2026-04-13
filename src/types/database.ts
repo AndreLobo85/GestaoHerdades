@@ -28,13 +28,33 @@ export interface Database {
       }
       feed_items: {
         Row: FeedItem
-        Insert: Omit<FeedItem, 'id'>
-        Update: Partial<Omit<FeedItem, 'id'>>
+        Insert: Omit<FeedItem, 'id' | 'product'>
+        Update: Partial<Omit<FeedItem, 'id' | 'product'>>
       }
       feed_logs: {
         Row: FeedLog
-        Insert: Omit<FeedLog, 'id' | 'created_at'>
-        Update: Partial<Omit<FeedLog, 'id' | 'created_at'>>
+        Insert: Omit<FeedLog, 'id' | 'created_at' | 'feed_item'>
+        Update: Partial<Omit<FeedLog, 'id' | 'created_at' | 'feed_item'>>
+      }
+      expense_categories: {
+        Row: ExpenseCategory
+        Insert: Omit<ExpenseCategory, 'id' | 'created_at'>
+        Update: Partial<Omit<ExpenseCategory, 'id' | 'created_at'>>
+      }
+      general_expenses: {
+        Row: GeneralExpense
+        Insert: Omit<GeneralExpense, 'id' | 'created_at' | 'category' | 'product'>
+        Update: Partial<Omit<GeneralExpense, 'id' | 'created_at' | 'category' | 'product'>>
+      }
+      products: {
+        Row: Product
+        Insert: Omit<Product, 'id' | 'created_at'>
+        Update: Partial<Omit<Product, 'id' | 'created_at'>>
+      }
+      stock_movements: {
+        Row: StockMovement
+        Insert: Omit<StockMovement, 'id' | 'created_at' | 'product'>
+        Update: Partial<Omit<StockMovement, 'id' | 'created_at' | 'product'>>
       }
     }
   }

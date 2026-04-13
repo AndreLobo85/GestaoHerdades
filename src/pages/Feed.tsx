@@ -138,7 +138,7 @@ export default function Feed() {
     if (!isAdmin || !selectedProductId) return
     const product = products.find(p => p.id === selectedProductId)
     if (!product) return
-    const err = await insertItem({ name: product.name, unit: product.unit, active: true, product_id: product.id } as any)
+    const err = await insertItem({ name: product.name, unit: product.unit, active: true, product_id: product.id })
     if (err) { alert('Erro ao adicionar item: ' + err.message); return }
     setSelectedProductId('')
     setItemModal(false)
@@ -233,10 +233,12 @@ export default function Feed() {
                             padding: '1px 6px',
                             borderRadius: 4,
                             fontWeight: 600,
+                            opacity: submitting ? 0.4 : 1,
+                            transition: 'opacity 0.2s',
                             background: stock.current_quantity <= stock.min_stock_alert ? (stock.current_quantity === 0 ? '#fee2e2' : '#fef9c3') : '#dcfce7',
                             color: stock.current_quantity <= stock.min_stock_alert ? (stock.current_quantity === 0 ? '#991b1b' : '#92400e') : '#166534',
                           }}>
-                            Stock: {stock.current_quantity} {stock.unit}
+                            {submitting ? 'A atualizar...' : `Stock: ${stock.current_quantity} ${stock.unit}`}
                           </span>
                         )}
                       </div>
@@ -326,7 +328,7 @@ export default function Feed() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <button type="button" onClick={async () => {
-                        const err = await updateItem(item.id, { active: !item.active } as any)
+                        const err = await updateItem(item.id, { active: !item.active })
                         if (err) alert('Erro: ' + err.message)
                       }} title={item.active ? 'Desativar' : 'Ativar'} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: item.active ? 'var(--primary)' : '#a8a29e' }}>{item.active ? 'visibility' : 'visibility_off'}</span>
