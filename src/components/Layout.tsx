@@ -22,7 +22,7 @@ const allMobileItems = [
 ]
 
 export default function Layout() {
-  const { isAdmin, profile, allowedViews } = useAuth()
+  const { isAdmin, profile, allowedViews, signOut } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
 
   // Filter by allowed views from DB; if no views loaded yet, admins see all, users see basics
@@ -55,6 +55,12 @@ export default function Layout() {
             {avatarUrl ? (
               <img src={avatarUrl} alt="Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
             ) : initials}
+          </button>
+          <button onClick={signOut} title="Terminar sessao"
+            style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-low)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#fecaca')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface-low)')}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#78716c' }}>logout</span>
           </button>
         </div>
       </header>
