@@ -10,7 +10,9 @@ interface AuthContextType {
   profile: Profile | null
   loading: boolean
   isAdmin: boolean
+  isPending: boolean
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   updateProfile: (updates: { full_name?: string; avatar_url?: string | null }) => Promise<{ error: string | null }>
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>
@@ -35,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(data as Profile)
         return
       }
-      // Trigger may not have fired yet, wait briefly
       await new Promise(r => setTimeout(r, 500))
     }
     setProfile(null)
@@ -67,6 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error }
+  }
+
+  const signUp = async (email: string, password: string, fullName: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } }
+    })
+    if (error) return { error: error.message }
+    return { error: null }
   }
 
   const signOut = async () => {
@@ -103,7 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       loading,
       isAdmin: profile?.role === 'admin',
+      isPending: profile?.status === 'pending',
       signIn,
+      signUp,
       signOut,
       updateProfile,
       updatePassword,

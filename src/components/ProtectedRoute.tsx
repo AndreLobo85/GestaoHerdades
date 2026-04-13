@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function ProtectedRoute({ requiredRole }: Props) {
-  const { session, loading, isAdmin } = useAuth()
+  const { session, loading, isAdmin, isPending } = useAuth()
 
   if (loading) {
     return (
@@ -22,6 +22,10 @@ export default function ProtectedRoute({ requiredRole }: Props) {
   }
 
   if (!session) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (isPending) {
     return <Navigate to="/login" replace />
   }
 

@@ -101,11 +101,14 @@ export interface FeedItem {
 }
 
 export type UserRole = 'admin' | 'utilizador'
+export type UserStatus = 'pending' | 'active' | 'inactive'
 
 export interface Profile {
   id: string
   full_name: string
+  email: string | null
   role: UserRole
+  status: UserStatus
   avatar_url: string | null
   created_at: string
 }
