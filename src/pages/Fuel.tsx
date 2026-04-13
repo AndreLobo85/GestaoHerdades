@@ -1,17 +1,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/ui/Modal'
 import { useVehicles } from '../lib/store'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
-import type { FuelLog, FuelType } from '../types/database'
+import type { FuelLog, FuelType, Profile } from '../types/database'
 
 export default function Fuel() {
+  const { profile } = useAuth()
   const [logs, setLogs] = useState<FuelLog[]>([])
   const [_loading, setLoading] = useState(true)
   const [vehicleModal, setVehicleModal] = useState(false)
   const { data: vehicles, insert: insertVehicle } = useVehicles()
   const activeVehicles = vehicles.filter(v => v.active)
+  const [_profiles, setProfiles] = useState<Profile[]>([])
   const [form, setForm] = useState({ vehicle_id: '', date: new Date().toISOString().split('T')[0], fuel_type: 'agricola' as FuelType, hours_or_km: '', liters: '' })
+
+  useEffect(() => {
+    supabase.from('profiles').select('*').eq('status', 'active')
+      .then(({ data }) => { if (data) setProfiles(data as Profile[]) })
+  }, [])
   const [vf, setVf] = useState({ brand: '', model: '', plate: '', vehicle_type: 'vehicle' as 'machine' | 'vehicle', current_km: '' })
 
   const fetchLogs = useCallback(async () => {
@@ -113,14 +121,16 @@ export default function Fuel() {
                 </button>
               </div>
               <table className="data-table"><thead><tr>
-                <th>Data</th><th>Veiculo</th><th>Tipo</th><th style={{ textAlign: 'right' }}>Litros</th><th style={{ width: 40 }}></th>
+                <th>Data</th><th>Veiculo</th><th>Tipo</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Litros</th><th>Registado por</th><th style={{ width: 40 }}></th>
               </tr></thead><tbody>
-                {logs.slice(0, 5).map(f => (
+                {logs.slice(0, 10).map(f => (
                   <tr key={f.id}>
                     <td style={{ fontSize: '0.875rem' }}>{formatDate(f.date)}</td>
                     <td><span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '—'}</span><br/><span style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{f.vehicle?.plate}</span></td>
                     <td><span className={f.fuel_type === 'agricola' ? 'badge-brown' : 'badge-blue'}>{f.fuel_type === 'agricola' ? 'Agricola' : 'Rodoviario'}</span></td>
+                    <td style={{ textAlign: 'right', fontSize: '0.875rem', color: '#78716c' }}>{f.hours_or_km} km</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.875rem' }}>{f.liters}L</td>
+                    <td style={{ fontSize: '0.8125rem', color: '#78716c' }}>{profile?.full_name || '—'}</td>
                     <td><button onClick={() => handleDelete(f.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', borderRadius: '50%' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button></td>
                   </tr>
                 ))}
