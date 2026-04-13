@@ -6,6 +6,56 @@ import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
 import type { Activity, Profile } from '../types/database'
 
+function ActivityCard({ activity: a, onDelete }: { activity: Activity; onDelete: () => void }) {
+  const [open, setOpen] = useState(false)
+  const initials = (a.employee?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const typeColors: Record<string, string> = { Vinha: '#7c3aed', Montado: '#3a6843', Animais: '#b45309', Olival: '#65a30d', Reparacoes: '#6366f1', Outros: '#78716c' }
+  const color = typeColors[a.activity_type?.name ?? ''] ?? '#78716c'
+
+  return (
+    <div
+      style={{ background: open ? 'white' : 'var(--surface-low)', borderRadius: '0.75rem', overflow: 'hidden', transition: 'all 0.15s', border: open ? '1px solid #e5e5e5' : '1px solid transparent', cursor: 'pointer' }}
+      onClick={() => setOpen(!open)}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.625rem 0.75rem' }}>
+        {/* Avatar */}
+        <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.625rem', fontWeight: 800, flexShrink: 0, letterSpacing: '0.02em' }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: '0.8125rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.employee?.name}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: 1 }}>
+            <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'white', background: color, padding: '1px 6px', borderRadius: 4, lineHeight: 1.4 }}>{a.activity_type?.name}</span>
+            <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#3a6843' }}>{a.hours}h</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+          {a.description && (
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#a8a29e', transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); onDelete() }} style={{ padding: 4, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer' }}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span>
+          </button>
+        </div>
+      </div>
+      {/* Expanded description */}
+      {open && a.description && (
+        <div style={{ padding: '0 0.75rem 0.75rem 3.375rem', animation: 'fadeIn 0.15s ease-out' }}>
+          <div style={{ background: 'var(--surface-low)', borderRadius: '0.5rem', padding: '0.5rem 0.625rem' }}>
+            <p style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#78716c', marginBottom: '0.125rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Descricao</p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--on-surface)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{a.description}</p>
+          </div>
+        </div>
+      )}
+      {open && !a.description && (
+        <div style={{ padding: '0 0.75rem 0.625rem 3.375rem' }}>
+          <p style={{ fontSize: '0.75rem', color: '#a8a29e', fontStyle: 'italic' }}>Sem descricao.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Activities() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -163,24 +213,37 @@ export default function Activities() {
               const sel = selectedDay === day
               const today = day === now.getDate() && month === now.getMonth() + 1 && year === now.getFullYear()
               const da = actByDay[day] ?? []
+              const dayHours = da.reduce((s, a) => s + a.hours, 0)
+              const uniqueTypes = [...new Set(da.map(a => a.activity_type?.name).filter(Boolean))]
               return (
                 <button key={day} onClick={() => setSelectedDay(day)}
                   style={{
-                    background: sel ? 'rgba(255,183,131,0.12)' : 'white', padding: '0.25rem 0.375rem',
+                    background: sel ? 'rgba(255,183,131,0.12)' : da.length > 0 ? 'rgba(58,104,67,0.04)' : 'white',
+                    padding: '0.25rem 0.375rem',
                     fontSize: '0.8125rem', textAlign: 'left', border: 'none', cursor: 'pointer',
                     outline: sel ? '2px solid #ffb783' : 'none', outlineOffset: -2,
                     transition: 'background 0.1s', minHeight: 0, display: 'flex', flexDirection: 'column',
                   }}>
-                  {today ? (
-                    <span style={{ background: 'var(--primary)', color: 'white', width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 700 }}>{day}</span>
-                  ) : (
-                    <span style={{ fontWeight: sel ? 700 : 400, color: sel ? 'var(--primary)' : 'inherit', fontSize: '0.8125rem' }}>{day}</span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    {today ? (
+                      <span style={{ background: 'var(--primary)', color: 'white', width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 700 }}>{day}</span>
+                    ) : (
+                      <span style={{ fontWeight: sel || da.length > 0 ? 700 : 400, color: sel ? 'var(--primary)' : da.length > 0 ? '#1a1a1a' : 'inherit', fontSize: '0.8125rem' }}>{day}</span>
+                    )}
+                    {dayHours > 0 && (
+                      <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: '#3a6843', background: 'rgba(58,104,67,0.1)', padding: '1px 4px', borderRadius: 4, lineHeight: 1.3 }}>{dayHours}h</span>
+                    )}
+                  </div>
                   {da.length > 0 && (
-                    <div style={{ marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {da.slice(0, 2).map((a, idx) => (
-                        <div key={idx} style={{ height: 3, borderRadius: 9999, width: `${Math.min(100, (a.hours / 8) * 100)}%`, background: idx === 0 ? '#3a6843' : '#793c00' }} />
+                    <div style={{ marginTop: 3, display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+                      {uniqueTypes.slice(0, 2).map((typeName, idx) => (
+                        <div key={idx} style={{ fontSize: '0.5rem', fontWeight: 600, color: idx === 0 ? '#3a6843' : '#793c00', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+                          {typeName}
+                        </div>
                       ))}
+                      {uniqueTypes.length > 2 && (
+                        <div style={{ fontSize: '0.5rem', color: '#a8a29e', fontWeight: 600 }}>+{uniqueTypes.length - 2}</div>
+                      )}
                     </div>
                   )}
                 </button>
@@ -225,21 +288,16 @@ export default function Activities() {
             </form>
           </div>
 
-          {/* Day records */}
+          {/* Day records — expandable */}
           {dayActs.length > 0 && (
             <div className="card" style={{ padding: '1rem', flexShrink: 0 }}>
-              <h4 style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.625rem' }}>Dia {selectedDay} — {dayActs.length} registo{dayActs.length > 1 ? 's' : ''}</h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.625rem' }}>
+                <h4 style={{ fontWeight: 700, fontSize: '0.8125rem' }}>Dia {selectedDay} — {dayActs.length} registo{dayActs.length > 1 ? 's' : ''}</h4>
+                <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#3a6843' }}>{dayActs.reduce((s, a) => s + a.hours, 0)}h total</span>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {dayActs.map(a => (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-low)', padding: '0.625rem 0.75rem', borderRadius: '0.625rem' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: '0.8125rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.employee?.name}</p>
-                      <p style={{ fontSize: '0.6875rem', color: '#78716c' }}>{a.activity_type?.name} — {a.hours}h</p>
-                    </div>
-                    <button onClick={() => handleDelete(a.id)} style={{ padding: 4, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer', flexShrink: 0 }}>
-                      <span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span>
-                    </button>
-                  </div>
+                  <ActivityCard key={a.id} activity={a} onDelete={() => handleDelete(a.id)} />
                 ))}
               </div>
             </div>
