@@ -45,17 +45,33 @@ export default function Fuel() {
       logs.map(f => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.vehicle?.plate ?? '', f.fuel_type === 'agricola' ? 'Agricola' : 'Rodoviario', String(f.hours_or_km), String(f.liters)]))
   }
   const totalLiters = logs.reduce((s, f) => s + f.liters, 0)
-  const totalKm = logs.reduce((s, f) => s + f.hours_or_km, 0)
-  const avgConsumption = totalKm > 0 ? (totalLiters / totalKm) * 100 : 0
 
-  // Per-vehicle stats
-  const vehicleStats: Record<string, { liters: number; km: number; count: number }> = {}
+  // Per-vehicle stats: calculate distance from consecutive odometer readings
+  const vehicleStats: Record<string, { liters: number; distance: number; count: number }> = {}
+  // Group logs by vehicle, sorted by date ascending to compute distance between fills
+  const logsByVehicle: Record<string, FuelLog[]> = {}
   logs.forEach(f => {
-    if (!vehicleStats[f.vehicle_id]) vehicleStats[f.vehicle_id] = { liters: 0, km: 0, count: 0 }
-    vehicleStats[f.vehicle_id].liters += f.liters
-    vehicleStats[f.vehicle_id].km += f.hours_or_km
-    vehicleStats[f.vehicle_id].count++
+    if (!logsByVehicle[f.vehicle_id]) logsByVehicle[f.vehicle_id] = []
+    logsByVehicle[f.vehicle_id].push(f)
   })
+  Object.entries(logsByVehicle).forEach(([vid, vLogs]) => {
+    const sorted = [...vLogs].sort((a, b) => a.hours_or_km - b.hours_or_km)
+    let totalDist = 0
+    let totalLit = 0
+    for (let i = 1; i < sorted.length; i++) {
+      const dist = sorted[i].hours_or_km - sorted[i - 1].hours_or_km
+      if (dist > 0) {
+        totalDist += dist
+        totalLit += sorted[i].liters
+      }
+    }
+    vehicleStats[vid] = { liters: totalLit, distance: totalDist, count: vLogs.length }
+  })
+
+  // Overall average from all vehicles
+  const totalDistance = Object.values(vehicleStats).reduce((s, v) => s + v.distance, 0)
+  const totalLitersForAvg = Object.values(vehicleStats).reduce((s, v) => s + v.liters, 0)
+  const avgConsumption = totalDistance > 0 ? (totalLitersForAvg / totalDistance) * 100 : 0
 
   return (
     <div>
@@ -158,13 +174,13 @@ export default function Fuel() {
                     <div><p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{v.brand} {v.model}</p><p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{v.plate}</p></div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    {vehicleStats[v.id] ? (
+                    {vehicleStats[v.id] && vehicleStats[v.id].count >= 2 && vehicleStats[v.id].distance > 0 ? (
                       <>
-                        <p style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{vehicleStats[v.id].km > 0 ? ((vehicleStats[v.id].liters / vehicleStats[v.id].km) * 100).toFixed(1) : '—'} <span style={{ fontSize: '0.625rem', color: '#a8a29e', fontWeight: 600 }}>L/100km</span></p>
-                        <p style={{ fontSize: '0.5625rem', color: '#a8a29e' }}>{vehicleStats[v.id].liters.toFixed(0)}L em {vehicleStats[v.id].count} abast.</p>
+                        <p style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{((vehicleStats[v.id].liters / vehicleStats[v.id].distance) * 100).toFixed(1)} <span style={{ fontSize: '0.625rem', color: '#a8a29e', fontWeight: 600 }}>L/100km</span></p>
+                        <p style={{ fontSize: '0.5625rem', color: '#a8a29e' }}>{vehicleStats[v.id].distance.toFixed(0)}km em {vehicleStats[v.id].count} abast.</p>
                       </>
                     ) : (
-                      <span className="badge-green" style={{ fontSize: '0.5625rem' }}>Sem registos</span>
+                      <span style={{ fontSize: '0.6875rem', color: '#a8a29e' }}>{vehicleStats[v.id] ? `${vehicleStats[v.id].count} abast.` : 'Sem registos'}</span>
                     )}
                   </div>
                 </div>
@@ -190,8 +206,7 @@ export default function Fuel() {
             </div>
             <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8125rem', color: '#a8a29e' }}>
               <span>{logs.length} abastecimento{logs.length !== 1 ? 's' : ''}</span>
-              <span>·</span>
-              <span>{totalKm.toFixed(0)} km registados</span>
+              {totalDistance > 0 && <><span>·</span><span>{totalDistance.toFixed(0)} km percorridos</span></>}
             </div>
             <div style={{ position: 'absolute', right: -16, bottom: -16, opacity: 0.08 }}>
               <span className="material-symbols-outlined" style={{ fontSize: 80, fontVariationSettings: "'FILL' 1" }}>local_gas_station</span>
