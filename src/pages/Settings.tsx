@@ -287,111 +287,136 @@ function AddUserModal({ open, onClose, onSaved }: { open: boolean; onClose: () =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(''); setSaving(true)
-
-    // Create auth user via signup
     const { data, error: signUpErr } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } }
+      email, password, options: { data: { full_name: fullName } }
     })
-
-    if (signUpErr) {
-      setError(signUpErr.message); setSaving(false); return
-    }
-
-    // Update profile to active + chosen role (trigger creates it as pending by default)
+    if (signUpErr) { setError(signUpErr.message); setSaving(false); return }
     if (data.user) {
-      // Wait for trigger
       await new Promise(r => setTimeout(r, 1000))
       await supabase.from('profiles').update({ status: 'active', role, full_name: fullName, email } as never).eq('id', data.user.id)
     }
-
     setFullName(''); setEmail(''); setPassword(''); setRole('utilizador')
-    setSaving(false)
-    onSaved()
+    setSaving(false); onSaved()
   }
 
+  const initials = fullName ? fullName.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) : ''
+
   return (
-    <Modal open={open} onClose={onClose} title="Novo Utilizador">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <Modal open={open} onClose={onClose} title="Novo Utilizador" wide>
+      <form onSubmit={handleSubmit}>
         {error && (
-          <div style={{ background: '#ffdad6', color: '#93000a', padding: '0.75rem 1rem', borderRadius: '0.75rem', fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>error</span>{error}
+          <div style={{ background: '#ffdad6', color: '#93000a', padding: '0.875rem 1.25rem', borderRadius: '0.875rem', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '1.5rem' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>error</span>{error}
           </div>
         )}
 
-        {/* Avatar placeholder + name section */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--surface-low)', borderRadius: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>person_add</span>
+        {/* Live preview card */}
+        <div style={{
+          background: 'linear-gradient(135deg, #f2f4f3 0%, #e6e9e8 100%)',
+          borderRadius: '1.25rem', padding: '1.5rem', marginBottom: '1.75rem',
+          display: 'flex', alignItems: 'center', gap: '1.25rem',
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
+            background: fullName ? (role === 'admin' ? 'var(--primary)' : 'var(--secondary)') : '#a8a29e',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontSize: initials ? '1.125rem' : '1.5rem', fontWeight: 800, fontFamily: "'Manrope', sans-serif",
+            transition: 'background 0.3s',
+          }}>
+            {initials || <span className="material-symbols-outlined" style={{ fontSize: 28 }}>person_add</span>}
           </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontWeight: 700, fontSize: '0.875rem', fontFamily: "'Manrope', sans-serif" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontWeight: 800, fontSize: '1.0625rem', fontFamily: "'Manrope', sans-serif", color: '#191c1c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {fullName || 'Novo Utilizador'}
             </p>
-            <p style={{ fontSize: '0.75rem', color: '#78716c' }}>
+            <p style={{ fontSize: '0.8125rem', color: '#78716c', marginTop: '0.125rem' }}>
               {email || 'email@exemplo.com'}
             </p>
+            <span style={{
+              display: 'inline-block', marginTop: '0.5rem', fontSize: '0.625rem', fontWeight: 800,
+              textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0.25rem 0.625rem',
+              borderRadius: '9999px',
+              background: role === 'admin' ? '#ffdcc5' : '#b9ecbd',
+              color: role === 'admin' ? '#793c00' : '#3e6d47',
+            }}>
+              {role}
+            </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label className="text-label" style={{ display: 'block', marginBottom: 6, marginLeft: 2 }}>Nome Completo</label>
-            <input required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Primeiro e ultimo nome" className="input-field" />
+        {/* Form fields */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ gridColumn: 'span 2' }}>
+            <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>Nome Completo</label>
+            <input required value={fullName} onChange={e => setFullName(e.target.value)}
+              placeholder="Primeiro e ultimo nome" className="input-field" style={{ fontSize: '0.9375rem' }} />
           </div>
-
           <div>
-            <label className="text-label" style={{ display: 'block', marginBottom: 6, marginLeft: 2 }}>Email</label>
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" className="input-field" />
+            <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>Email</label>
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="email@exemplo.com" className="input-field" style={{ fontSize: '0.9375rem' }} />
           </div>
-
           <div>
-            <label className="text-label" style={{ display: 'block', marginBottom: 6, marginLeft: 2 }}>Password</label>
-            <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimo 6 caracteres" className="input-field" />
+            <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>Password</label>
+            <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)}
+              placeholder="Min. 6 caracteres" className="input-field" style={{ fontSize: '0.9375rem' }} />
           </div>
         </div>
 
-        <div>
-          <label className="text-label" style={{ display: 'block', marginBottom: 8, marginLeft: 2 }}>Tipo de Acesso</label>
+        {/* Role selector */}
+        <div style={{ marginBottom: '1.25rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>Tipo de Acesso</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <button type="button" onClick={() => setRole('utilizador')}
-              style={{
-                padding: '1rem', borderRadius: '1rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                background: role === 'utilizador' ? 'var(--secondary)' : 'var(--surface-highest)',
-                color: role === 'utilizador' ? 'white' : 'var(--on-surface-variant)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-                boxShadow: role === 'utilizador' ? '0 4px 14px rgba(58,104,67,0.2)' : 'none',
-              }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 28 }}>person</span>
-              <span style={{ fontWeight: 700, fontSize: '0.8125rem' }}>Utilizador</span>
-              <span style={{ fontSize: '0.625rem', opacity: 0.7 }}>Acesso basico</span>
-            </button>
-            <button type="button" onClick={() => setRole('admin')}
-              style={{
-                padding: '1rem', borderRadius: '1rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                background: role === 'admin' ? 'var(--primary)' : 'var(--surface-highest)',
-                color: role === 'admin' ? 'white' : 'var(--on-surface-variant)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-                boxShadow: role === 'admin' ? '0 4px 14px rgba(121,60,0,0.2)' : 'none',
-              }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 28 }}>shield_person</span>
-              <span style={{ fontWeight: 700, fontSize: '0.8125rem' }}>Admin</span>
-              <span style={{ fontSize: '0.625rem', opacity: 0.7 }}>Acesso total</span>
-            </button>
+            {([
+              { value: 'utilizador' as UserRole, icon: 'person', label: 'Utilizador', desc: 'Registo de dados', color: 'var(--secondary)', shadow: 'rgba(58,104,67,0.15)' },
+              { value: 'admin' as UserRole, icon: 'shield_person', label: 'Administrador', desc: 'Acesso total', color: 'var(--primary)', shadow: 'rgba(121,60,0,0.15)' },
+            ]).map(opt => {
+              const active = role === opt.value
+              return (
+                <button key={opt.value} type="button" onClick={() => setRole(opt.value)}
+                  style={{
+                    padding: '1.25rem 1rem', borderRadius: '1rem', cursor: 'pointer', transition: 'all 0.2s ease',
+                    background: active ? opt.color : '#f2f4f3',
+                    color: active ? 'white' : '#44483c',
+                    border: active ? 'none' : '2px solid transparent',
+                    boxShadow: active ? `0 6px 20px ${opt.shadow}` : 'none',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.375rem',
+                    transform: active ? 'scale(1.02)' : 'scale(1)',
+                  }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 32, opacity: active ? 1 : 0.6 }}>{opt.icon}</span>
+                  <span style={{ fontWeight: 800, fontSize: '0.875rem', fontFamily: "'Manrope', sans-serif" }}>{opt.label}</span>
+                  <span style={{ fontSize: '0.6875rem', opacity: 0.7 }}>{opt.desc}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.75rem 1rem', background: 'var(--surface-low)', borderRadius: '0.75rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--secondary)', marginTop: 1, flexShrink: 0 }}>check_circle</span>
-          <p style={{ fontSize: '0.75rem', color: '#78716c', lineHeight: 1.5 }}>
-            Utilizadores criados pelo admin ficam automaticamente ativos, sem necessidade de aprovacao.
+        {/* Info note */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.875rem 1rem', background: '#f2f4f3', borderRadius: '0.875rem', marginBottom: '1.5rem' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--secondary)', flexShrink: 0 }}>verified</span>
+          <p style={{ fontSize: '0.8125rem', color: '#78716c', lineHeight: 1.5 }}>
+            Conta ativada automaticamente, sem aprovacao.
           </p>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.25rem' }}>
-          <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
-          <button type="submit" className="btn-primary" disabled={saving} style={{ padding: '0.75rem 1.25rem', opacity: saving ? 0.7 : 1 }}>
+        {/* Actions */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+          <button type="button" onClick={onClose}
+            style={{ padding: '0.875rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, borderRadius: '0.875rem', border: 'none', background: '#f2f4f3', color: '#44483c', cursor: 'pointer', transition: 'background 0.15s' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#e6e9e8')}
+            onMouseLeave={e => (e.currentTarget.style.background = '#f2f4f3')}>
+            Cancelar
+          </button>
+          <button type="submit" disabled={saving}
+            style={{
+              padding: '0.875rem 1.75rem', fontSize: '0.875rem', fontWeight: 700, borderRadius: '0.875rem', border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, var(--primary), var(--primary-container))',
+              color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem',
+              boxShadow: '0 4px 14px rgba(121,60,0,0.2)',
+              opacity: saving ? 0.7 : 1, transition: 'all 0.2s',
+            }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{saving ? 'hourglass_top' : 'person_add'}</span>
             {saving ? 'A criar...' : 'Criar Utilizador'}
           </button>
         </div>
