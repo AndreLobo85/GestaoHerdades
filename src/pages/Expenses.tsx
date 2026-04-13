@@ -371,13 +371,102 @@ function CategoryExpenses({ category }: { category: ExpenseCategory }) {
   )
 }
 
+/* ── Expenses Dashboard ────────────────────────────────── */
+function ExpensesDashboard({ categories }: { categories: ExpenseCategory[] }) {
+  const [vehicleTotal, setVehicleTotal] = useState<{ count: number; total: number }>({ count: 0, total: 0 })
+  const [catTotals, setCatTotals] = useState<Record<string, { count: number; total: number }>>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      // Vehicle expenses total
+      const { data: vData } = await supabase.from('expenses').select('invoice_amount')
+      const vRows = (vData ?? []) as { invoice_amount: number }[]
+      setVehicleTotal({ count: vRows.length, total: vRows.reduce((s, r) => s + r.invoice_amount, 0) })
+
+      // General expenses per category
+      const { data: gData } = await supabase.from('general_expenses').select('category_id, invoice_amount')
+      const gRows = (gData ?? []) as { category_id: string; invoice_amount: number }[]
+      const totals: Record<string, { count: number; total: number }> = {}
+      gRows.forEach(r => {
+        if (!totals[r.category_id]) totals[r.category_id] = { count: 0, total: 0 }
+        totals[r.category_id].count++
+        totals[r.category_id].total += r.invoice_amount
+      })
+      setCatTotals(totals)
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  const veiculosCat = categories.find(c => c.name.toLowerCase() === 'veiculos')
+  const otherCats = categories.filter(c => c.name.toLowerCase() !== 'veiculos')
+  const grandTotal = vehicleTotal.total + Object.values(catTotals).reduce((s, t) => s + t.total, 0)
+  const grandCount = vehicleTotal.count + Object.values(catTotals).reduce((s, t) => s + t.count, 0)
+
+  if (loading) return <div className="card" style={{ padding: '3rem', textAlign: 'center' }}><p style={{ color: '#a8a29e' }}>A carregar...</p></div>
+
+  const allItems = [
+    ...(veiculosCat ? [{ name: veiculosCat.name, icon: veiculosCat.icon, count: vehicleTotal.count, total: vehicleTotal.total }] : []),
+    ...otherCats.map(c => ({ name: c.name, icon: c.icon, count: catTotals[c.id]?.count ?? 0, total: catTotals[c.id]?.total ?? 0 })),
+  ]
+
+  return (
+    <div>
+      {/* Grand total card */}
+      <div style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-container))', borderRadius: '1.25rem', padding: '2rem', color: 'white', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.08 }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 120, fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
+        </div>
+        <p style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.6)', marginBottom: '0.375rem' }}>Total Geral de Despesas</p>
+        <h2 style={{ fontSize: '2.5rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", lineHeight: 1.1 }}>
+          {grandTotal.toFixed(2)} <span style={{ fontSize: '1.25rem', fontWeight: 600, opacity: 0.7 }}>EUR</span>
+        </h2>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.5rem' }}>{grandCount} registo{grandCount !== 1 ? 's' : ''} em {allItems.length} categoria{allItems.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Category breakdown cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+        {allItems.map(item => {
+          const pct = grandTotal > 0 ? (item.total / grandTotal) * 100 : 0
+          return (
+            <div key={item.name} className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '0.75rem', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{item.icon}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 700, fontSize: '0.9375rem', fontFamily: "'Manrope', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+                  <p style={{ fontSize: '0.6875rem', color: '#a8a29e' }}>{item.count} registo{item.count !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.375rem' }}>
+                  <h3 style={{ fontSize: '1.375rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif" }}>{item.total.toFixed(2)} <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#a8a29e' }}>EUR</span></h3>
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--primary)' }}>{pct.toFixed(1)}%</span>
+                </div>
+                {/* Progress bar */}
+                <div style={{ height: 6, borderRadius: 3, background: 'var(--surface-low)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 3, background: 'var(--primary)', width: `${pct}%`, transition: 'width 0.3s ease' }} />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* ── Main Expenses Page ────────────────────────────────── */
 const VEHICLES_KEY = '__vehicles__'
+const DASHBOARD_KEY = '__dashboard__'
 
 export default function Expenses() {
   const { data: categories, loading: catLoading, insert: insertCat, remove: removeCat, update: updateCat, fetch: refreshCats } = useExpenseCategories()
   const activeCategories = categories.filter(c => c.active)
-  const [selectedCat, setSelectedCat] = useState<string>(VEHICLES_KEY)
+  const [selectedCat, setSelectedCat] = useState<string>(DASHBOARD_KEY)
   const [newCatModal, setNewCatModal] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [newCatIcon, setNewCatIcon] = useState('restaurant')
@@ -391,6 +480,7 @@ export default function Expenses() {
     }
   }, [activeCategories, selectedCat])
 
+  const isDashboard = selectedCat === DASHBOARD_KEY
   const isVehicles = selectedCat === VEHICLES_KEY
   const selectedCategory = activeCategories.find(c => c.id === selectedCat)
 
@@ -452,6 +542,19 @@ export default function Expenses() {
             <p style={{ fontSize: '0.8125rem', color: '#a8a29e', padding: '0.5rem' }}>A carregar...</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              {/* Dashboard */}
+              <button onClick={() => setSelectedCat(DASHBOARD_KEY)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.625rem 0.75rem',
+                  borderRadius: '0.75rem', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%',
+                  background: isDashboard ? 'var(--primary)' : 'transparent',
+                  color: isDashboard ? 'white' : 'var(--on-surface)',
+                  transition: 'all 0.15s',
+                }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, opacity: isDashboard ? 1 : 0.6 }}>dashboard</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: isDashboard ? 700 : 500 }}>Dashboard</span>
+              </button>
+              <div style={{ height: 1, background: '#e5e5e5', margin: '0.25rem 0' }} />
               {/* All categories — Veiculos uses VEHICLES_KEY, others use cat.id */}
               {activeCategories.map(cat => {
                 const isVeiculosCat = cat.name.toLowerCase() === 'veiculos'
@@ -491,12 +594,15 @@ export default function Expenses() {
 
         {/* Content area */}
         <div>
-          {isVehicles ? <VehicleExpenses /> : selectedCategory ? <CategoryExpenses key={selectedCategory.id} category={selectedCategory} /> : (
-            <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#d6d3d1' }}>folder_open</span>
-              <p style={{ fontWeight: 600, marginTop: '1rem' }}>Selecione uma categoria</p>
-            </div>
-          )}
+          {isDashboard ? <ExpensesDashboard categories={activeCategories} />
+            : isVehicles ? <VehicleExpenses />
+            : selectedCategory ? <CategoryExpenses key={selectedCategory.id} category={selectedCategory} />
+            : (
+              <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#d6d3d1' }}>folder_open</span>
+                <p style={{ fontWeight: 600, marginTop: '1rem' }}>Selecione uma categoria</p>
+              </div>
+            )}
         </div>
       </div>
 
