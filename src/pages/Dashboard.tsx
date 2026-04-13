@@ -24,8 +24,8 @@ export default function Dashboard() {
       ])
       setStats({
         employees: emp.count ?? 0,
-        hoursThisMonth: (act.data ?? []).reduce((s, a) => s + (a.hours || 0), 0),
-        fuelThisMonth: (fuel.data ?? []).reduce((s, f) => s + (f.liters || 0), 0),
+        hoursThisMonth: (act.data as any[] ?? []).reduce((s: number, a: any) => s + (a.hours || 0), 0),
+        fuelThisMonth: (fuel.data as any[] ?? []).reduce((s: number, f: any) => s + (f.liters || 0), 0),
         feedCount: feed.count ?? 0,
       })
       setRecent((rec.data as Activity[]) ?? [])

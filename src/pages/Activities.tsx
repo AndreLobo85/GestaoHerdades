@@ -34,7 +34,7 @@ export default function Activities() {
     ev.preventDefault()
     if (!selectedDay) return
     const d = `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`
-    await supabase.from('activities').insert({ employee_id: form.employee_id, date: d, activity_type_id: form.activity_type_id, hours: parseFloat(form.hours), description: form.description })
+    await supabase.from('activities').insert({ employee_id: form.employee_id, date: d, activity_type_id: form.activity_type_id, hours: parseFloat(form.hours), description: form.description } as any)
     setForm({ employee_id: '', activity_type_id: '', hours: '', description: '' })
     fetchActivities()
   }

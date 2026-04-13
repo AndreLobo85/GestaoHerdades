@@ -7,7 +7,7 @@ import type { FuelLog, FuelType } from '../types/database'
 
 export default function Fuel() {
   const [logs, setLogs] = useState<FuelLog[]>([])
-  const [loading, setLoading] = useState(true)
+  const [_loading, setLoading] = useState(true)
   const [vehicleModal, setVehicleModal] = useState(false)
   const { data: vehicles, insert: insertVehicle } = useVehicles()
   const activeVehicles = vehicles.filter(v => v.active)
@@ -26,7 +26,7 @@ export default function Fuel() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await supabase.from('fuel_logs').insert({ vehicle_id: form.vehicle_id, date: form.date, fuel_type: form.fuel_type, hours_or_km: parseFloat(form.hours_or_km), liters: parseFloat(form.liters), notes: '' })
+    await supabase.from('fuel_logs').insert({ vehicle_id: form.vehicle_id, date: form.date, fuel_type: form.fuel_type, hours_or_km: parseFloat(form.hours_or_km), liters: parseFloat(form.liters), notes: '' } as any)
     setForm({ vehicle_id: '', date: new Date().toISOString().split('T')[0], fuel_type: 'agricola', hours_or_km: '', liters: '' })
     fetchLogs()
   }

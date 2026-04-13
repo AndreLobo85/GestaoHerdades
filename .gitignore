@@ -24,3 +24,5 @@ take-screenshots.mjs
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

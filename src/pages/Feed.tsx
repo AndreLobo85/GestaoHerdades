@@ -9,7 +9,7 @@ export default function Feed() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [logs, setLogs] = useState<FeedLog[]>([])
   const [allMonth, setAllMonth] = useState<FeedLog[]>([])
-  const [loading, setLoading] = useState(true)
+  const [_loading, setLoading] = useState(true)
   const [itemModal, setItemModal] = useState(false)
   const { data: feedItems, insert: insertItem } = useFeedItems()
   const activeItems = feedItems.filter(i => i.active)
@@ -36,7 +36,7 @@ export default function Feed() {
     ev.preventDefault()
     const ins = Object.entries(quantities).filter(([, q]) => parseFloat(q) > 0).map(([fid, q]) => ({ date: selectedDate, feed_item_id: fid, quantity: parseFloat(q), notes }))
     if (!ins.length) return
-    await supabase.from('feed_logs').insert(ins); setQuantities({}); setNotes(''); fetchDay(); fetchMonth()
+    await supabase.from('feed_logs').insert(ins as any); setQuantities({}); setNotes(''); fetchDay(); fetchMonth()
   }
   const handleDelete = async (id: string) => { await supabase.from('feed_logs').delete().eq('id', id); fetchDay(); fetchMonth() }
   const handleAddItem = async (ev: React.FormEvent) => { ev.preventDefault(); await insertItem({ name: newItem.name, unit: newItem.unit, active: true }); setNewItem({ name: '', unit: 'unidades' }); setItemModal(false) }
