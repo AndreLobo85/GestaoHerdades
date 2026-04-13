@@ -8,6 +8,7 @@ const allSideItems = [
   { to: '/atividades', icon: 'timer', label: 'Horas/Atividades', key: 'atividades' },
   { to: '/gasoleo', icon: 'local_gas_station', label: 'Consumo Gasoleo', key: 'gasoleo' },
   { to: '/alimentacao', icon: 'agriculture', label: 'Alimentacao Animal', key: 'alimentacao' },
+  { to: '/stock', icon: 'inventory_2', label: 'Stock', key: 'stock' },
   { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas' },
   { to: '/definicoes', icon: 'settings', label: 'Definicoes', key: 'definicoes' },
 ]
@@ -17,6 +18,7 @@ const allMobileItems = [
   { to: '/atividades', icon: 'history', label: 'Horas', key: 'atividades' },
   { to: '/gasoleo', icon: 'ev_station', label: 'Gasoleo', key: 'gasoleo' },
   { to: '/alimentacao', icon: 'pets', label: 'Alimentar', key: 'alimentacao' },
+  { to: '/stock', icon: 'inventory_2', label: 'Stock', key: 'stock' },
   { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas' },
   { to: '/definicoes', icon: 'settings', label: 'Config', key: 'definicoes' },
 ]

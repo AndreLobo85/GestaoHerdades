@@ -165,8 +165,38 @@ export interface GeneralExpense {
   invoice_number: string
   invoice_amount: number
   invoice_file_url: string | null
+  product_id: string | null
+  product_quantity: number | null
   created_by: string | null
   created_at: string
   // joined
   category?: ExpenseCategory
+  product?: Product
+}
+
+export interface Product {
+  id: string
+  name: string
+  unit: string
+  current_quantity: number
+  min_stock_alert: number
+  active: boolean
+  created_at: string
+}
+
+export type StockMovementType = 'entrada' | 'saida'
+
+export interface StockMovement {
+  id: string
+  product_id: string
+  type: StockMovementType
+  quantity: number
+  reason: string
+  general_expense_id: string | null
+  notes: string
+  date: string
+  created_by: string | null
+  created_at: string
+  // joined
+  product?: Product
 }

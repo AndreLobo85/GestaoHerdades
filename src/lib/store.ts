@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import type {
-  Employee, ActivityType, Activity, Vehicle, FuelLog, FeedItem, FeedLog, ExpenseCategory, GeneralExpense
+  Employee, ActivityType, Activity, Vehicle, FuelLog, FeedItem, FeedLog, ExpenseCategory, GeneralExpense, Product, StockMovement
 } from '../types/database'
 
 function useSupabaseTable<T extends { id: string }>(
@@ -136,4 +136,31 @@ export function useExpenseCategories() {
 
 export function useGeneralExpenses() {
   return useSupabaseTable<GeneralExpense>('general_expenses', 'date', false)
+}
+
+export function useProducts() {
+  return useSupabaseTable<Product>('products', 'name', true)
+}
+
+export function useStockMovements() {
+  const base = useSupabaseTable<StockMovement>('stock_movements', 'date', false)
+
+  const fetchByMonth = useCallback(async (year: number, month: number) => {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const endDate = month === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(month + 1).padStart(2, '0')}-01`
+
+    const { data, error } = await supabase
+      .from('stock_movements')
+      .select('*, product:products(*)')
+      .gte('date', startDate)
+      .lt('date', endDate)
+      .order('date', { ascending: false })
+
+    if (!error && data) return data as StockMovement[]
+    return []
+  }, [])
+
+  return { ...base, fetchByMonth }
 }
