@@ -228,19 +228,21 @@ export default function Dashboard() {
           <div>
             <button onClick={handleExportAll} disabled={loading || exporting === 'all'}
               style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem',
-                borderRadius: '0.875rem', border: 'none', cursor: loading ? 'wait' : 'pointer',
-                textAlign: 'left', width: '100%', transition: 'all 0.2s',
-                background: exporting === 'all' ? '#ecfccb' : 'linear-gradient(135deg, var(--primary), var(--primary-container))',
-                color: exporting === 'all' ? '#3a6843' : 'white',
-              }}>
-              <div style={{ width: 32, height: 32, borderRadius: '0.625rem', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{exporting === 'all' ? 'check' : 'download'}</span>
-              </div>
-              <div>
-                <p style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{exporting === 'all' ? 'Exportado!' : 'Exportar Tudo'}</p>
-                <p style={{ fontSize: '0.5625rem', opacity: 0.7 }}>Excel · {monthName} · 5 tabs</p>
-              </div>
+                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start',
+                padding: '1.25rem', borderRadius: '1rem', border: 'none', cursor: loading ? 'wait' : 'pointer',
+                width: '100%', transition: 'all 0.2s',
+                background: exporting === 'all' ? '#d4edda' : '#1d6f42',
+                color: 'white',
+              }}
+              onMouseEnter={e => { if (exporting !== 'all') e.currentTarget.style.background = '#175c37' }}
+              onMouseLeave={e => { if (exporting !== 'all') e.currentTarget.style.background = '#1d6f42' }}>
+              <p style={{ fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>Exportar Dados</p>
+              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: exporting === 'all' ? '#1d6f42' : 'white' }}>
+                {exporting === 'all' ? 'Exportado!' : 'Export'}
+              </h3>
+              <p style={{ fontSize: '0.6875rem', color: exporting === 'all' ? '#1d6f42' : 'rgba(255,255,255,0.5)', marginTop: '0.125rem' }}>
+                {exporting === 'all' ? 'Ficheiro transferido' : `Excel · ${monthName} · 5 tabs`}
+              </p>
             </button>
           </div>
 
