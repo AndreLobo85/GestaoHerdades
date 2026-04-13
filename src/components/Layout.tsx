@@ -4,18 +4,12 @@ import { useAuth } from '../contexts/AuthContext'
 import UserProfileModal from './UserProfileModal'
 
 const allSideItems = [
+  { to: '/', icon: 'dashboard', label: 'Dashboard', key: 'dashboard' },
   { to: '/atividades', icon: 'timer', label: 'Horas/Atividades', key: 'atividades' },
   { to: '/gasoleo', icon: 'local_gas_station', label: 'Consumo Gasoleo', key: 'gasoleo' },
   { to: '/alimentacao', icon: 'agriculture', label: 'Alimentacao Animal', key: 'alimentacao' },
   { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas' },
   { to: '/definicoes', icon: 'settings', label: 'Definicoes', key: 'definicoes' },
-]
-
-const allTopItems = [
-  { to: '/', label: 'Dashboard', key: 'dashboard' },
-  { to: '/atividades', label: 'Horas/Atividades', key: 'atividades' },
-  { to: '/gasoleo', label: 'Consumo Gasoleo', key: 'gasoleo' },
-  { to: '/alimentacao', label: 'Alimentacao Animal', key: 'alimentacao' },
 ]
 
 const allMobileItems = [
@@ -37,7 +31,6 @@ export default function Layout() {
     return isAdmin || !['despesas', 'definicoes'].includes(key)
   }
   const sideItems = allSideItems.filter(i => canSee(i.key))
-  const topItems = allTopItems.filter(i => canSee(i.key))
   const mobileItems = allMobileItems.filter(i => canSee(i.key))
 
   const initials = profile?.full_name
@@ -51,30 +44,12 @@ export default function Layout() {
       <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
       {/* Top Nav */}
       <header className="top-nav">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           <NavLink to="/" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#365314', letterSpacing: '-0.03em', textDecoration: 'none', fontFamily: "'Manrope', sans-serif" }}>
             AgroPrecision
           </NavLink>
-          <nav className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            {topItems.map(item => (
-              <NavLink key={item.to} to={item.to} end={item.to === '/'}
-                style={({ isActive }) => ({
-                  fontFamily: "'Manrope', sans-serif", fontSize: '0.875rem', fontWeight: isActive ? 700 : 600,
-                  letterSpacing: '-0.01em', color: isActive ? '#4d7c0f' : '#78716c',
-                  borderBottom: isActive ? '2px solid #4d7c0f' : '2px solid transparent',
-                  paddingBottom: '0.25rem', textDecoration: 'none', transition: 'all 0.2s',
-                })}>
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {isAdmin && (
-            <NavLink to="/definicoes" style={{ padding: '0.5rem', color: '#78716c', borderRadius: '9999px', display: 'flex' }}>
-              <span className="material-symbols-outlined">settings</span>
-            </NavLink>
-          )}
           <button onClick={() => setProfileOpen(true)} title="O meu perfil"
             style={{ width: 32, height: 32, borderRadius: '50%', background: avatarUrl ? 'transparent' : 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.6875rem', fontWeight: 700, border: 'none', cursor: 'pointer', padding: 0, overflow: 'hidden' }}>
             {avatarUrl ? (
@@ -93,7 +68,7 @@ export default function Layout() {
           </div>
           <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             {sideItems.map(item => (
-              <NavLink key={item.to} to={item.to}
+              <NavLink key={item.to} to={item.to} end={item.to === '/'}
                 className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                 <span className="material-symbols-outlined">{item.icon}</span>
                 <span>{item.label}</span>
