@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import type {
-  Employee, ActivityType, Activity, Vehicle, FuelLog, FeedItem, FeedLog
+  Employee, ActivityType, Activity, Vehicle, FuelLog, FeedItem, FeedLog, ExpenseCategory, GeneralExpense
 } from '../types/database'
 
 function useSupabaseTable<T extends { id: string }>(
@@ -128,4 +128,12 @@ export function useFeedLogs() {
   }, [])
 
   return { ...base, fetchByMonth }
+}
+
+export function useExpenseCategories() {
+  return useSupabaseTable<ExpenseCategory>('expense_categories', 'position', true)
+}
+
+export function useGeneralExpenses() {
+  return useSupabaseTable<GeneralExpense>('general_expenses', 'date', false)
 }

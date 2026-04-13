@@ -147,3 +147,26 @@ export interface FeedLog {
   // joined
   feed_item?: FeedItem
 }
+
+export interface ExpenseCategory {
+  id: string
+  name: string
+  icon: string
+  position: number
+  active: boolean
+  created_at: string
+}
+
+export interface GeneralExpense {
+  id: string
+  category_id: string
+  date: string
+  description: string
+  invoice_number: string
+  invoice_amount: number
+  invoice_file_url: string | null
+  created_by: string | null
+  created_at: string
+  // joined
+  category?: ExpenseCategory
+}

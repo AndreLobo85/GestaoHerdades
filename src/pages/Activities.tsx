@@ -4,7 +4,7 @@ import { pt } from 'date-fns/locale'
 import { useEmployees, useActivityTypes } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
-import type { Activity, Profile } from '../types/database'
+import type { Activity } from '../types/database'
 
 export default function Activities() {
   const now = new Date()
@@ -17,18 +17,8 @@ export default function Activities() {
   const { data: activityTypes } = useActivityTypes()
   const activeEmployees = employees.filter(e => e.active)
   const activeTypes = activityTypes.filter(t => t.active)
-  const [profiles, setProfiles] = useState<Profile[]>([])
-
-  useEffect(() => {
-    supabase.from('profiles').select('*').eq('status', 'active').order('full_name', { ascending: true })
-      .then(({ data }) => { if (data) setProfiles(data as Profile[]) })
-  }, [])
-
-  // Combine employees + profiles for the dropdown
-  const allWorkers = [
-    ...profiles.map(p => ({ id: p.id, name: p.full_name || p.email || 'Sem nome', source: 'profile' as const })),
-    ...activeEmployees.map(e => ({ id: e.id, name: e.name, source: 'employee' as const })),
-  ]
+  // Only show employees — activities.employee_id has FK to employees(id)
+  const allWorkers = activeEmployees.map(e => ({ id: e.id, name: e.name }))
   const [form, setForm] = useState({ employee_id: '', activity_type_id: '', hours: '', description: '' })
 
   const fetchActivities = useCallback(async () => {
@@ -42,13 +32,32 @@ export default function Activities() {
 
   useEffect(() => { fetchActivities() }, [fetchActivities])
 
+  const [formError, setFormError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
     if (!selectedDay) return
-    const d = `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`
-    await supabase.from('activities').insert({ employee_id: form.employee_id, date: d, activity_type_id: form.activity_type_id, hours: parseFloat(form.hours), description: form.description } as any)
-    setForm({ employee_id: '', activity_type_id: '', hours: '', description: '' })
-    fetchActivities()
+    if (!form.employee_id) { setFormError('Selecione um funcionario.'); return }
+    if (!form.activity_type_id) { setFormError('Selecione uma atividade.'); return }
+    if (!form.hours || parseFloat(form.hours) <= 0) { setFormError('Indique as horas.'); return }
+    setFormError('')
+    setSubmitting(true)
+    try {
+      const d = `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`
+      const { error } = await supabase.from('activities').insert({
+        employee_id: form.employee_id,
+        date: d,
+        activity_type_id: form.activity_type_id,
+        hours: parseFloat(form.hours),
+        description: form.description,
+      } as any)
+      if (error) { setFormError(error.message); return }
+      setForm({ employee_id: '', activity_type_id: '', hours: '', description: '' })
+      fetchActivities()
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleDelete = async (id: string) => { if (!confirm('Eliminar?')) return; await supabase.from('activities').delete().eq('id', id); fetchActivities() }
@@ -180,9 +189,14 @@ export default function Activities() {
                 <input type="number" required min="0.5" max="24" step="0.5" value={form.hours} onChange={e => setForm({ ...form, hours: e.target.value })} placeholder="Horas" className="input-field" style={{ padding: '0.75rem', textAlign: 'center' }} />
               </div>
               <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Descricao (opcional)..." className="input-field" style={{ resize: 'none', padding: '0.75rem', fontSize: '0.8125rem' }} />
-              <button type="submit" className="btn-primary" disabled={!selectedDay} style={{ width: '100%', padding: '0.75rem', fontSize: '0.875rem', opacity: selectedDay ? 1 : 0.5 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>save</span>
-                {selectedDay ? `Registar (dia ${selectedDay})` : 'Selecione um dia'}
+              {formError && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.5rem', padding: '0.625rem 0.75rem', fontSize: '0.75rem', color: '#991b1b' }}>
+                  {formError}
+                </div>
+              )}
+              <button type="submit" className="btn-primary" disabled={!selectedDay || submitting} style={{ width: '100%', padding: '0.75rem', fontSize: '0.875rem', opacity: selectedDay && !submitting ? 1 : 0.5 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{submitting ? 'hourglass_empty' : 'save'}</span>
+                {submitting ? 'A registar...' : selectedDay ? `Registar (dia ${selectedDay})` : 'Selecione um dia'}
               </button>
             </form>
           </div>
