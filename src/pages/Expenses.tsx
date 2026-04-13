@@ -417,7 +417,8 @@ export default function Expenses() {
     await refreshCats()
   }
 
-  const iconOptions = ['restaurant', 'build', 'local_shipping', 'water_drop', 'electrical_services', 'vaccines', 'agriculture', 'storefront', 'handyman', 'inventory_2', 'cleaning_services', 'local_gas_station', 'payments', 'description']
+  const [editMode, setEditMode] = useState(false)
+  const iconOptions = ['restaurant', 'build', 'local_shipping', 'water_drop', 'electrical_services', 'vaccines', 'agriculture', 'storefront', 'handyman', 'inventory_2', 'cleaning_services', 'local_gas_station', 'payments', 'description', 'directions_car']
 
   return (
     <div>
@@ -433,36 +434,32 @@ export default function Expenses() {
         <div className="card" style={{ padding: '1rem', position: 'sticky', top: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
             <h3 style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>Categorias</h3>
-            <button onClick={() => { setEditingCat(null); setNewCatName(''); setNewCatIcon('restaurant'); setNewCatModal(true) }}
-              style={{ width: 28, height: 28, borderRadius: '0.5rem', border: 'none', background: 'var(--surface-low)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Nova categoria">
-              <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--primary)' }}>add</span>
-            </button>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              <button onClick={() => setEditMode(!editMode)}
+                style={{ width: 28, height: 28, borderRadius: '0.5rem', border: 'none', background: editMode ? 'var(--primary)' : 'var(--surface-low)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                title="Editar categorias">
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: editMode ? 'white' : '#78716c' }}>edit</span>
+              </button>
+              <button onClick={() => { setEditingCat(null); setNewCatName(''); setNewCatIcon('restaurant'); setNewCatModal(true) }}
+                style={{ width: 28, height: 28, borderRadius: '0.5rem', border: 'none', background: 'var(--surface-low)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Nova categoria">
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--primary)' }}>add</span>
+              </button>
+            </div>
           </div>
 
           {catLoading ? (
             <p style={{ fontSize: '0.8125rem', color: '#a8a29e', padding: '0.5rem' }}>A carregar...</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {/* Built-in Veiculos */}
-              <button onClick={() => setSelectedCat(VEHICLES_KEY)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.625rem 0.75rem',
-                  borderRadius: '0.75rem', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%',
-                  background: isVehicles ? 'var(--primary)' : 'transparent',
-                  color: isVehicles ? 'white' : 'var(--on-surface)',
-                  transition: 'all 0.15s',
-                }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18, opacity: isVehicles ? 1 : 0.6 }}>directions_car</span>
-                <span style={{ fontSize: '0.8125rem', fontWeight: isVehicles ? 700 : 500 }}>Veiculos</span>
-              </button>
-
-              {/* Custom categories */}
-              {activeCategories.filter(c => c.name.toLowerCase() !== 'veiculos').map(cat => {
-                const isActive = selectedCat === cat.id
+              {/* All categories — Veiculos uses VEHICLES_KEY, others use cat.id */}
+              {activeCategories.map(cat => {
+                const isVeiculosCat = cat.name.toLowerCase() === 'veiculos'
+                const catKey = isVeiculosCat ? VEHICLES_KEY : cat.id
+                const isActive = selectedCat === catKey
                 return (
                   <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                    <button onClick={() => setSelectedCat(cat.id)}
+                    <button onClick={() => setSelectedCat(catKey)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.625rem 0.75rem',
                         borderRadius: '0.75rem', border: 'none', cursor: 'pointer', textAlign: 'left', flex: 1,
@@ -473,16 +470,18 @@ export default function Expenses() {
                       <span className="material-symbols-outlined" style={{ fontSize: 18, opacity: isActive ? 1 : 0.6 }}>{cat.icon}</span>
                       <span style={{ fontSize: '0.8125rem', fontWeight: isActive ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
                     </button>
-                    <div style={{ display: 'flex', flexShrink: 0 }}>
-                      <button onClick={() => { setEditingCat(cat); setNewCatName(cat.name); setNewCatIcon(cat.icon); setNewCatModal(true) }}
-                        style={{ padding: 2, border: 'none', background: 'none', cursor: 'pointer', opacity: 0.4 }} title="Editar">
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>edit</span>
-                      </button>
-                      <button onClick={() => handleDeleteCategory(cat)}
-                        style={{ padding: 2, border: 'none', background: 'none', cursor: 'pointer', opacity: 0.4 }} title="Eliminar">
-                        <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'var(--error)' }}>delete</span>
-                      </button>
-                    </div>
+                    {editMode && (
+                      <div style={{ display: 'flex', flexShrink: 0 }}>
+                        <button onClick={() => { setEditingCat(cat); setNewCatName(cat.name); setNewCatIcon(cat.icon); setNewCatModal(true); setEditMode(false) }}
+                          style={{ padding: 3, border: 'none', background: 'none', cursor: 'pointer' }} title="Editar">
+                          <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#78716c' }}>edit</span>
+                        </button>
+                        <button onClick={() => handleDeleteCategory(cat)}
+                          style={{ padding: 3, border: 'none', background: 'none', cursor: 'pointer' }} title="Eliminar">
+                          <span className="material-symbols-outlined" style={{ fontSize: 15, color: 'var(--error)' }}>delete</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               })}
