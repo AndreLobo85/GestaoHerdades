@@ -61,92 +61,139 @@ export default function Dashboard() {
     load()
   }, [])
 
-  // Styling helpers
-  const headerStyle = {
-    font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
-    fill: { fgColor: { rgb: '1D6F42' } },
-    border: { bottom: { style: 'medium', color: { rgb: '155C35' } } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-  }
-  const titleStyle = {
-    font: { bold: true, sz: 14, color: { rgb: '1D6F42' } },
-    alignment: { horizontal: 'left' },
-  }
-  const subtitleStyle = {
-    font: { sz: 9, color: { rgb: '999999' } },
-    alignment: { horizontal: 'left' },
-  }
-  const cellStyle = {
-    border: {
-      top: { style: 'thin', color: { rgb: 'E5E5E5' } },
-      bottom: { style: 'thin', color: { rgb: 'E5E5E5' } },
-      left: { style: 'thin', color: { rgb: 'E5E5E5' } },
-      right: { style: 'thin', color: { rgb: 'E5E5E5' } },
-    },
-    alignment: { vertical: 'center' },
-    font: { sz: 10 },
-  }
-  const numStyle = { ...cellStyle, alignment: { horizontal: 'right', vertical: 'center' as const }, font: { sz: 10, bold: true } }
-  const totalLabelStyle = {
-    font: { bold: true, sz: 11, color: { rgb: '1D6F42' } },
-    fill: { fgColor: { rgb: 'F0FDF4' } },
-    border: { top: { style: 'medium', color: { rgb: '1D6F42' } }, bottom: { style: 'medium', color: { rgb: '1D6F42' } } },
-    alignment: { horizontal: 'right', vertical: 'center' },
-  }
-  const totalValueStyle = {
-    ...totalLabelStyle,
-    alignment: { horizontal: 'right', vertical: 'center' as const },
-    font: { bold: true, sz: 12, color: { rgb: '1D6F42' } },
-  }
-  const altRowStyle = {
-    ...cellStyle,
-    fill: { fgColor: { rgb: 'FAFAFA' } },
+  // ── Excel Export Engine ──────────────────────────────
+  const thin = { style: 'thin', color: { rgb: 'D9D9D9' } }
+  const borders = { top: thin, bottom: thin, left: thin, right: thin }
+
+  interface TabTheme { primary: string; light: string; accent: string; icon: string }
+  const themes: Record<string, TabTheme> = {
+    resumo:   { primary: '1D6F42', light: 'E8F5E9', accent: '155C35', icon: '📊' },
+    atividades: { primary: '3A6843', light: 'ECFCCB', accent: '2D5233', icon: '⏱️' },
+    gasoleo:  { primary: '793C00', light: 'FFF7ED', accent: '5C2D00', icon: '⛽' },
+    alimentacao: { primary: '365314', light: 'F0FDF4', accent: '2A4010', icon: '🐄' },
+    despVeic: { primary: '6366F1', light: 'EEF2FF', accent: '4F46E5', icon: '🚗' },
+    despGeral: { primary: '78350F', light: 'FEF3C7', accent: '5C2808', icon: '💰' },
   }
 
-  function buildSheet(title: string, period: string, headers: string[], rows: any[][], colWidths: number[], totalCol?: number) {
-    // Title row + subtitle + blank + headers + data + total
+  function buildSheet(title: string, period: string, headers: string[], rows: any[][], colWidths: number[], totalCol: number | undefined, theme: TabTheme) {
+    const numCols = headers.length
+    // Row layout: 0=banner, 1=title, 2=subtitle, 3=blank, 4=headers, 5..N=data, N+1=total
     const aoa: any[][] = [
-      [title], [period], [], headers, ...rows,
+      [theme.icon + '  ' + title.toUpperCase()],
+      ['Relatorio Mensal — ' + title],
+      ['Periodo: ' + period + '  |  Registos: ' + rows.length + (totalCol !== undefined ? '  |  Total: ' + rows.reduce((s, r) => s + (Number(r[totalCol]) || 0), 0).toFixed(1) : '')],
+      [],
+      headers,
+      ...rows,
     ]
     if (totalCol !== undefined && rows.length > 0) {
-      const totalRow = headers.map(() => '')
-      totalRow[totalCol - 1] = 'TOTAL'
+      const totalRow: any[] = headers.map(() => '')
+      totalRow[0] = 'TOTAL'
       totalRow[totalCol] = rows.reduce((s, r) => s + (Number(r[totalCol]) || 0), 0)
       aoa.push(totalRow)
     }
 
     const ws = XLSX.utils.aoa_to_sheet(aoa)
-
-    // Column widths
     ws['!cols'] = colWidths.map(w => ({ wch: w }))
-
-    // Merge title across columns
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
+      { s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: numCols - 1 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: numCols - 1 } },
     ]
 
-    // Apply styles
     const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
     for (let R = range.s.r; R <= range.e.r; R++) {
       for (let C = range.s.c; C <= range.e.c; C++) {
         const addr = XLSX.utils.encode_cell({ r: R, c: C })
         if (!ws[addr]) ws[addr] = { v: '', t: 's' }
-        if (R === 0) ws[addr].s = titleStyle
-        else if (R === 1) ws[addr].s = subtitleStyle
-        else if (R === 3) ws[addr].s = headerStyle
-        else if (R > 3 && totalCol !== undefined && R === range.e.r) {
-          ws[addr].s = C === totalCol ? totalValueStyle : totalLabelStyle
-        } else if (R > 3) {
-          const isAlt = (R - 4) % 2 === 1
-          ws[addr].s = typeof rows[R - 4]?.[C] === 'number' ? { ...numStyle, ...(isAlt ? { fill: altRowStyle.fill } : {}) } : (isAlt ? altRowStyle : cellStyle)
+        const cell = ws[addr]
+
+        if (R === 0) {
+          // Banner row — dark colored background
+          cell.s = { font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: theme.primary } }, alignment: { horizontal: 'left', vertical: 'center' }, border: {} }
+        } else if (R === 1) {
+          // Title row
+          cell.s = { font: { bold: true, sz: 11, color: { rgb: theme.primary } }, fill: { fgColor: { rgb: theme.light } }, alignment: { horizontal: 'left', vertical: 'center' } }
+        } else if (R === 2) {
+          // Subtitle/stats row
+          cell.s = { font: { sz: 9, color: { rgb: '888888' } }, fill: { fgColor: { rgb: theme.light } }, alignment: { horizontal: 'left', vertical: 'center' } }
+        } else if (R === 3) {
+          // Blank separator
+          cell.s = { fill: { fgColor: { rgb: 'FFFFFF' } } }
+        } else if (R === 4) {
+          // Header row
+          cell.s = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: theme.primary } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borders }
+        } else if (totalCol !== undefined && R === range.e.r && rows.length > 0) {
+          // Total row
+          const isValueCol = C === totalCol
+          cell.s = {
+            font: { bold: true, sz: isValueCol ? 12 : 10, color: { rgb: theme.primary } },
+            fill: { fgColor: { rgb: theme.light } },
+            border: { top: { style: 'medium', color: { rgb: theme.primary } }, bottom: { style: 'double', color: { rgb: theme.primary } }, left: thin, right: thin },
+            alignment: { horizontal: isValueCol || C === 0 ? 'right' : 'center', vertical: 'center' },
+          }
+        } else if (R > 4) {
+          // Data rows — alternating colors
+          const dataIdx = R - 5
+          const isAlt = dataIdx % 2 === 1
+          const isNum = typeof rows[dataIdx]?.[C] === 'number'
+          cell.s = {
+            font: { sz: 10, bold: isNum, color: { rgb: isNum ? '333333' : '555555' } },
+            fill: { fgColor: { rgb: isAlt ? 'F7F7F7' : 'FFFFFF' } },
+            border: borders,
+            alignment: { horizontal: isNum ? 'right' : 'left', vertical: 'center' },
+          }
         }
       }
     }
 
     // Row heights
-    ws['!rows'] = [{ hpt: 28 }, { hpt: 16 }, { hpt: 8 }, { hpt: 24 }]
+    ws['!rows'] = [{ hpt: 32 }, { hpt: 22 }, { hpt: 18 }, { hpt: 6 }, { hpt: 26 }]
+    return ws
+  }
 
+  function buildResumoSheet(period: string, kpis: { label: string; value: string; theme: TabTheme }[]) {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['📊  GESTAO AGRICOLA — RESUMO MENSAL'],
+      ['AgroPrecision — Relatorio Automatico'],
+      ['Periodo: ' + period],
+      [],
+      ['INDICADOR', 'VALOR'],
+      ...kpis.map(k => [k.label, k.value]),
+      [],
+      ['Gerado automaticamente em ' + new Date().toLocaleString('pt-PT')],
+    ])
+
+    ws['!cols'] = [{ wch: 32 }, { wch: 20 }]
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } },
+      { s: { r: kpis.length + 6, c: 0 }, e: { r: kpis.length + 6, c: 1 } },
+    ]
+
+    const t = themes.resumo
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: C })
+        if (!ws[addr]) ws[addr] = { v: '', t: 's' }
+        if (R === 0) ws[addr].s = { font: { bold: true, sz: 16, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: t.primary } }, alignment: { horizontal: 'left', vertical: 'center' } }
+        else if (R === 1) ws[addr].s = { font: { bold: true, sz: 11, color: { rgb: t.primary } }, fill: { fgColor: { rgb: t.light } }, alignment: { horizontal: 'left' } }
+        else if (R === 2) ws[addr].s = { font: { sz: 9, color: { rgb: '888888' } }, fill: { fgColor: { rgb: t.light } } }
+        else if (R === 4) ws[addr].s = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: t.primary } }, alignment: { horizontal: 'center', vertical: 'center' }, border: borders }
+        else if (R > 4 && R <= 4 + kpis.length) {
+          const kpi = kpis[R - 5]
+          if (C === 0) ws[addr].s = { font: { sz: 11, bold: true, color: { rgb: '333333' } }, fill: { fgColor: { rgb: kpi.theme.light } }, border: borders, alignment: { vertical: 'center' } }
+          else ws[addr].s = { font: { sz: 13, bold: true, color: { rgb: kpi.theme.primary } }, fill: { fgColor: { rgb: kpi.theme.light } }, border: borders, alignment: { horizontal: 'right', vertical: 'center' } }
+        } else if (R === kpis.length + 6) {
+          ws[addr].s = { font: { sz: 8, italic: true, color: { rgb: 'AAAAAA' } }, alignment: { horizontal: 'center' } }
+        }
+      }
+    }
+
+    ws['!rows'] = [{ hpt: 36 }, { hpt: 22 }, { hpt: 18 }, { hpt: 10 }, { hpt: 26 }]
+    for (let i = 0; i < kpis.length; i++) (ws['!rows'] as any[]).push({ hpt: 28 })
     return ws
   }
 
@@ -162,46 +209,62 @@ export default function Dashboard() {
       supabase.from('general_expenses').select('*, category:expense_categories(*)').gte('date', som).order('date', { ascending: false }),
     ])
 
+    const fuelData = fuelRes.data ?? []
+    const feedData = feedRes.data ?? []
+    const expData = expensesRes.data ?? []
+    const genData = genExpRes.data ?? []
+
+    const totalHours = allActivities.reduce((s: number, a: any) => s + (a.hours || 0), 0)
+    const totalFuel = fuelData.reduce((s: number, f: any) => s + (f.liters || 0), 0)
+    const totalExpV = expData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0)
+    const totalExpG = genData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0)
+
     const wb = XLSX.utils.book_new()
 
+    // Tab 0: Resumo
+    XLSX.utils.book_append_sheet(wb, buildResumoSheet(period, [
+      { label: 'Horas de Trabalho', value: totalHours.toFixed(1) + 'h', theme: themes.atividades },
+      { label: 'Atividades Registadas', value: String(allActivities.length), theme: themes.atividades },
+      { label: 'Gasoleo Consumido', value: totalFuel.toFixed(0) + ' L', theme: themes.gasoleo },
+      { label: 'Registos Alimentacao', value: String(feedData.length), theme: themes.alimentacao },
+      { label: 'Despesas Veiculos', value: totalExpV.toFixed(2) + ' €', theme: themes.despVeic },
+      { label: 'Despesas Gerais', value: totalExpG.toFixed(2) + ' €', theme: themes.despGeral },
+      { label: 'Total Despesas', value: (totalExpV + totalExpG).toFixed(2) + ' €', theme: themes.resumo },
+    ]), 'Resumo')
+
     // Tab 1: Atividades
-    XLSX.utils.book_append_sheet(wb, buildSheet(
-      'Atividades', period,
+    XLSX.utils.book_append_sheet(wb, buildSheet('Atividades', period,
       ['Data', 'Funcionario', 'Atividade', 'Horas', 'Descricao'],
       allActivities.map((a: any) => [formatDate(a.date), a.employee?.name ?? '', a.activity_type?.name ?? '', a.hours, a.description ?? '']),
-      [14, 22, 16, 10, 35], 3
+      [14, 24, 18, 10, 38], 3, themes.atividades
     ), 'Atividades')
 
     // Tab 2: Gasoleo
-    XLSX.utils.book_append_sheet(wb, buildSheet(
-      'Consumo de Gasoleo', period,
+    XLSX.utils.book_append_sheet(wb, buildSheet('Consumo de Gasoleo', period,
       ['Data', 'Veiculo', 'Tipo', 'KM/Horas', 'Litros', 'Notas'],
-      (fuelRes.data ?? []).map((f: any) => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.fuel_type, f.hours_or_km, f.liters, f.notes ?? '']),
-      [14, 22, 14, 12, 10, 30], 4
+      fuelData.map((f: any) => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.fuel_type, f.hours_or_km, f.liters, f.notes ?? '']),
+      [14, 24, 14, 12, 10, 32], 4, themes.gasoleo
     ), 'Gasoleo')
 
     // Tab 3: Alimentacao
-    XLSX.utils.book_append_sheet(wb, buildSheet(
-      'Alimentacao Animal', period,
+    XLSX.utils.book_append_sheet(wb, buildSheet('Alimentacao Animal', period,
       ['Data', 'Item', 'Quantidade', 'Unidade', 'Notas'],
-      (feedRes.data ?? []).map((f: any) => [formatDate(f.date), f.feed_item?.name ?? '', f.quantity, f.feed_item?.unit ?? '', f.notes ?? '']),
-      [14, 24, 14, 12, 30], 2
+      feedData.map((f: any) => [formatDate(f.date), f.feed_item?.name ?? '', f.quantity, f.feed_item?.unit ?? '', f.notes ?? '']),
+      [14, 26, 14, 12, 32], 2, themes.alimentacao
     ), 'Alimentacao')
 
     // Tab 4: Despesas Veiculos
-    XLSX.utils.book_append_sheet(wb, buildSheet(
-      'Despesas de Veiculos', period,
+    XLSX.utils.book_append_sheet(wb, buildSheet('Despesas de Veiculos', period,
       ['Data', 'Veiculo', 'KM', 'Descricao', 'N Fatura', 'Valor (EUR)'],
-      (expensesRes.data ?? []).map((e: any) => [formatDate(e.date), e.vehicle ? `${e.vehicle.brand} ${e.vehicle.model}` : '', e.km, e.description, e.invoice_number, e.invoice_amount]),
-      [14, 22, 10, 28, 16, 14], 5
+      expData.map((e: any) => [formatDate(e.date), e.vehicle ? `${e.vehicle.brand} ${e.vehicle.model}` : '', e.km, e.description, e.invoice_number, e.invoice_amount]),
+      [14, 24, 10, 30, 16, 14], 5, themes.despVeic
     ), 'Despesas Veiculos')
 
     // Tab 5: Despesas Gerais
-    XLSX.utils.book_append_sheet(wb, buildSheet(
-      'Despesas Gerais', period,
+    XLSX.utils.book_append_sheet(wb, buildSheet('Despesas Gerais', period,
       ['Data', 'Categoria', 'Descricao', 'N Fatura', 'Valor (EUR)'],
-      (genExpRes.data ?? []).map((e: any) => [formatDate(e.date), e.category?.name ?? '', e.description, e.invoice_number, e.invoice_amount]),
-      [14, 18, 28, 16, 14], 4
+      genData.map((e: any) => [formatDate(e.date), e.category?.name ?? '', e.description, e.invoice_number, e.invoice_amount]),
+      [14, 20, 30, 16, 14], 4, themes.despGeral
     ), 'Despesas Gerais')
 
     XLSX.writeFile(wb, `gestao_herdades_${new Date().toISOString().slice(0, 7)}.xlsx`)
