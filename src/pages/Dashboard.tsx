@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 import { supabase } from '../lib/supabase'
-import { exportToCSV, formatDate } from '../lib/export'
+import { formatDate } from '../lib/export'
 import type { Activity } from '../types/database'
 
 interface Stats {
@@ -60,25 +61,57 @@ export default function Dashboard() {
     load()
   }, [])
 
-  const handleExportActivities = async () => {
-    setExporting('activities')
-    const headers = ['Data', 'Funcionario', 'Atividade', 'Horas', 'Descricao']
-    const rows = allActivities.map((a: any) => [
-      formatDate(a.date), a.employee?.name ?? '', a.activity_type?.name ?? '', String(a.hours), a.description ?? '',
-    ])
-    exportToCSV(`atividades_${new Date().toISOString().slice(0, 7)}`, headers, rows)
-    setTimeout(() => setExporting(null), 1000)
-  }
-
-  const handleExportFuel = async () => {
-    setExporting('fuel')
+  const handleExportAll = async () => {
+    setExporting('all')
     const som = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
-    const { data } = await supabase.from('fuel_logs').select('*, vehicle:vehicles(*)').gte('date', som).order('date', { ascending: false })
-    const rows = (data ?? []).map((f: any) => [
-      formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.fuel_type, String(f.hours_or_km), String(f.liters), f.notes ?? '',
+
+    // Fetch all data in parallel
+    const [fuelRes, feedRes, expensesRes, genExpRes] = await Promise.all([
+      supabase.from('fuel_logs').select('*, vehicle:vehicles(*)').gte('date', som).order('date', { ascending: false }),
+      supabase.from('feed_logs').select('*, feed_item:feed_items(*)').gte('date', som).order('date', { ascending: false }),
+      supabase.from('expenses').select('*, vehicle:vehicles(*)').gte('date', som).order('date', { ascending: false }),
+      supabase.from('general_expenses').select('*, category:expense_categories(*)').gte('date', som).order('date', { ascending: false }),
     ])
-    exportToCSV(`gasoleo_${new Date().toISOString().slice(0, 7)}`, ['Data', 'Veiculo', 'Tipo', 'KM/Horas', 'Litros', 'Notas'], rows)
-    setTimeout(() => setExporting(null), 1000)
+
+    const wb = XLSX.utils.book_new()
+
+    // Tab 1: Atividades
+    const actSheet = XLSX.utils.aoa_to_sheet([
+      ['Data', 'Funcionario', 'Atividade', 'Horas', 'Descricao'],
+      ...allActivities.map((a: any) => [formatDate(a.date), a.employee?.name ?? '', a.activity_type?.name ?? '', a.hours, a.description ?? '']),
+    ])
+    XLSX.utils.book_append_sheet(wb, actSheet, 'Atividades')
+
+    // Tab 2: Gasoleo
+    const fuelSheet = XLSX.utils.aoa_to_sheet([
+      ['Data', 'Veiculo', 'Tipo', 'KM/Horas', 'Litros', 'Notas'],
+      ...(fuelRes.data ?? []).map((f: any) => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.fuel_type, f.hours_or_km, f.liters, f.notes ?? '']),
+    ])
+    XLSX.utils.book_append_sheet(wb, fuelSheet, 'Gasoleo')
+
+    // Tab 3: Alimentacao
+    const feedSheet = XLSX.utils.aoa_to_sheet([
+      ['Data', 'Item', 'Quantidade', 'Unidade', 'Notas'],
+      ...(feedRes.data ?? []).map((f: any) => [formatDate(f.date), f.feed_item?.name ?? '', f.quantity, f.feed_item?.unit ?? '', f.notes ?? '']),
+    ])
+    XLSX.utils.book_append_sheet(wb, feedSheet, 'Alimentacao')
+
+    // Tab 4: Despesas Veiculos
+    const expSheet = XLSX.utils.aoa_to_sheet([
+      ['Data', 'Veiculo', 'KM', 'Descricao', 'N Fatura', 'Valor'],
+      ...(expensesRes.data ?? []).map((e: any) => [formatDate(e.date), e.vehicle ? `${e.vehicle.brand} ${e.vehicle.model}` : '', e.km, e.description, e.invoice_number, e.invoice_amount]),
+    ])
+    XLSX.utils.book_append_sheet(wb, expSheet, 'Despesas Veiculos')
+
+    // Tab 5: Despesas Gerais
+    const genSheet = XLSX.utils.aoa_to_sheet([
+      ['Data', 'Categoria', 'Descricao', 'N Fatura', 'Valor'],
+      ...(genExpRes.data ?? []).map((e: any) => [formatDate(e.date), e.category?.name ?? '', e.description, e.invoice_number, e.invoice_amount]),
+    ])
+    XLSX.utils.book_append_sheet(wb, genSheet, 'Despesas Gerais')
+
+    XLSX.writeFile(wb, `gestao_herdades_${new Date().toISOString().slice(0, 7)}.xlsx`)
+    setTimeout(() => setExporting(null), 1500)
   }
 
   const now = new Date()
@@ -193,41 +226,22 @@ export default function Dashboard() {
 
           {/* Export */}
           <div>
-            <h3 style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a8a29e', marginBottom: '0.625rem' }}>Exportar Dados</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-              <button onClick={handleExportActivities} disabled={loading || exporting === 'activities'}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.625rem 0.75rem',
-                  borderRadius: '0.75rem', border: '1px solid #f0eeec', background: 'white', cursor: 'pointer',
-                  textAlign: 'left', width: '100%', transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'white')}>
-                <div style={{ width: 28, height: 28, borderRadius: '0.5rem', background: exporting === 'activities' ? '#ecfccb' : '#f5f5f4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: exporting === 'activities' ? '#3a6843' : '#78716c' }}>{exporting === 'activities' ? 'check' : 'download'}</span>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--on-surface)' }}>Atividades</p>
-                  <p style={{ fontSize: '0.5625rem', color: '#a8a29e' }}>CSV · {monthName}</p>
-                </div>
-              </button>
-              <button onClick={handleExportFuel} disabled={loading || exporting === 'fuel'}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.625rem 0.75rem',
-                  borderRadius: '0.75rem', border: '1px solid #f0eeec', background: 'white', cursor: 'pointer',
-                  textAlign: 'left', width: '100%', transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'white')}>
-                <div style={{ width: 28, height: 28, borderRadius: '0.5rem', background: exporting === 'fuel' ? '#fff7ed' : '#f5f5f4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.2s' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: exporting === 'fuel' ? '#793c00' : '#78716c' }}>{exporting === 'fuel' ? 'check' : 'download'}</span>
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--on-surface)' }}>Gasoleo</p>
-                  <p style={{ fontSize: '0.5625rem', color: '#a8a29e' }}>CSV · {monthName}</p>
-                </div>
-              </button>
-            </div>
+            <button onClick={handleExportAll} disabled={loading || exporting === 'all'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem',
+                borderRadius: '0.875rem', border: 'none', cursor: loading ? 'wait' : 'pointer',
+                textAlign: 'left', width: '100%', transition: 'all 0.2s',
+                background: exporting === 'all' ? '#ecfccb' : 'linear-gradient(135deg, var(--primary), var(--primary-container))',
+                color: exporting === 'all' ? '#3a6843' : 'white',
+              }}>
+              <div style={{ width: 32, height: 32, borderRadius: '0.625rem', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{exporting === 'all' ? 'check' : 'download'}</span>
+              </div>
+              <div>
+                <p style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{exporting === 'all' ? 'Exportado!' : 'Exportar Tudo'}</p>
+                <p style={{ fontSize: '0.5625rem', opacity: 0.7 }}>Excel · {monthName} · 5 tabs</p>
+              </div>
+            </button>
           </div>
 
           {/* Team count */}
