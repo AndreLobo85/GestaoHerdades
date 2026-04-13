@@ -6,11 +6,16 @@ import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
 import type { Activity, Profile } from '../types/database'
 
+const TYPE_COLORS: Record<string, string> = {
+  Vinha: '#7c3aed', Montado: '#3a6843', Animais: '#b45309', Olival: '#65a30d',
+  Reparacoes: '#6366f1', Outros: '#78716c',
+}
+function getTypeColor(name?: string) { return TYPE_COLORS[name ?? ''] ?? '#78716c' }
+
 function ActivityCard({ activity: a, onDelete }: { activity: Activity; onDelete: () => void }) {
   const [open, setOpen] = useState(false)
   const initials = (a.employee?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const typeColors: Record<string, string> = { Vinha: '#7c3aed', Montado: '#3a6843', Animais: '#b45309', Olival: '#65a30d', Reparacoes: '#6366f1', Outros: '#78716c' }
-  const color = typeColors[a.activity_type?.name ?? ''] ?? '#78716c'
+  const color = getTypeColor(a.activity_type?.name)
 
   return (
     <div
@@ -213,36 +218,60 @@ export default function Activities() {
               const sel = selectedDay === day
               const today = day === now.getDate() && month === now.getMonth() + 1 && year === now.getFullYear()
               const da = actByDay[day] ?? []
-              const dayHours = da.reduce((s, a) => s + a.hours, 0)
-              const uniqueTypes = [...new Set(da.map(a => a.activity_type?.name).filter(Boolean))]
+              // Group hours by activity type
+              const typeHours: Record<string, number> = {}
+              da.forEach(a => { const n = a.activity_type?.name ?? 'Outros'; typeHours[n] = (typeHours[n] || 0) + a.hours })
+              const typeEntries = Object.entries(typeHours)
+              const hasActs = typeEntries.length > 0
+
+              // Build background: single color or split gradient
+              let cellBg = 'white'
+              if (hasActs) {
+                if (typeEntries.length === 1) {
+                  cellBg = getTypeColor(typeEntries[0][0]) + '18' // single color with alpha
+                } else {
+                  const colors = typeEntries.slice(0, 3).map(([n]) => getTypeColor(n) + '20')
+                  const pct = 100 / colors.length
+                  cellBg = `linear-gradient(to bottom, ${colors.map((c, i) => `${c} ${i * pct}%, ${c} ${(i + 1) * pct}%`).join(', ')})`
+                }
+              }
+
               return (
                 <button key={day} onClick={() => setSelectedDay(day)}
                   style={{
-                    background: sel ? 'rgba(255,183,131,0.12)' : da.length > 0 ? 'rgba(58,104,67,0.04)' : 'white',
+                    background: sel ? 'rgba(255,183,131,0.18)' : cellBg,
                     padding: '0.25rem 0.375rem',
                     fontSize: '0.8125rem', textAlign: 'left', border: 'none', cursor: 'pointer',
-                    outline: sel ? '2px solid #ffb783' : 'none', outlineOffset: -2,
-                    transition: 'background 0.1s', minHeight: 0, display: 'flex', flexDirection: 'column',
+                    outline: sel ? '2.5px solid #ffb783' : 'none', outlineOffset: -2,
+                    transition: 'all 0.15s', minHeight: 0, display: 'flex', flexDirection: 'column',
+                    position: 'relative',
                   }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  {/* Day number row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: hasActs ? 4 : 0 }}>
                     {today ? (
                       <span style={{ background: 'var(--primary)', color: 'white', width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 700 }}>{day}</span>
                     ) : (
-                      <span style={{ fontWeight: sel || da.length > 0 ? 700 : 400, color: sel ? 'var(--primary)' : da.length > 0 ? '#1a1a1a' : 'inherit', fontSize: '0.8125rem' }}>{day}</span>
-                    )}
-                    {dayHours > 0 && (
-                      <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: '#3a6843', background: 'rgba(58,104,67,0.1)', padding: '1px 4px', borderRadius: 4, lineHeight: 1.3 }}>{dayHours}h</span>
+                      <span style={{ fontWeight: hasActs ? 700 : 400, color: sel ? 'var(--primary)' : hasActs ? '#1a1a1a' : '#78716c', fontSize: '0.8125rem' }}>{day}</span>
                     )}
                   </div>
-                  {da.length > 0 && (
-                    <div style={{ marginTop: 3, display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
-                      {uniqueTypes.slice(0, 2).map((typeName, idx) => (
-                        <div key={idx} style={{ fontSize: '0.5rem', fontWeight: 600, color: idx === 0 ? '#3a6843' : '#793c00', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
-                          {typeName}
-                        </div>
-                      ))}
-                      {uniqueTypes.length > 2 && (
-                        <div style={{ fontSize: '0.5rem', color: '#a8a29e', fontWeight: 600 }}>+{uniqueTypes.length - 2}</div>
+                  {/* Activity type tags */}
+                  {hasActs && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%', flex: 1 }}>
+                      {typeEntries.slice(0, 3).map(([typeName, hours]) => {
+                        const c = getTypeColor(typeName)
+                        return (
+                          <div key={typeName} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3,
+                            background: c + '22', borderLeft: `3px solid ${c}`, borderRadius: '0 4px 4px 0',
+                            padding: '2px 5px', width: '100%',
+                          }}>
+                            <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{typeName}</span>
+                            <span style={{ fontSize: '0.5625rem', fontWeight: 800, color: c, flexShrink: 0, lineHeight: 1.3 }}>{hours}h</span>
+                          </div>
+                        )
+                      })}
+                      {typeEntries.length > 3 && (
+                        <span style={{ fontSize: '0.5rem', color: '#78716c', fontWeight: 600, paddingLeft: 2 }}>+{typeEntries.length - 3} mais</span>
                       )}
                     </div>
                   )}
