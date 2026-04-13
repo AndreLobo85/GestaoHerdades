@@ -11,7 +11,7 @@ export default function Feed() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [logs, setLogs] = useState<FeedLog[]>([])
   const [allMonth, setAllMonth] = useState<FeedLog[]>([])
-  const [_loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [itemModal, setItemModal] = useState(false)
   const { data: feedItems, insert: insertItem, update: updateItem, remove: removeItem } = useFeedItems()
   const { data: products, fetch: refetchProducts } = useProducts()
@@ -20,6 +20,7 @@ export default function Feed() {
   const [notes, setNotes] = useState('')
   const [selectedProductId, setSelectedProductId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const fetchDay = useCallback(async () => {
     setLoading(true)
@@ -42,6 +43,7 @@ export default function Feed() {
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
+    setSubmitError('')
     const entries = Object.entries(quantities).filter(([, q]) => parseFloat(q) > 0)
     if (!entries.length) return
     setSubmitting(true)
@@ -50,30 +52,36 @@ export default function Feed() {
     const ins = entries.map(([fid, q]) => ({ date: selectedDate, feed_item_id: fid, quantity: parseFloat(q), notes }))
     const { data: insertedLogs, error: logError } = await supabase.from('feed_logs').insert(ins as any).select('id, feed_item_id, quantity') as { data: { id: string; feed_item_id: string; quantity: number }[] | null; error: any }
 
-    if (logError || !insertedLogs) { setSubmitting(false); return }
+    if (logError || !insertedLogs) {
+      setSubmitError('Erro ao guardar registos: ' + (logError?.message || 'erro desconhecido'))
+      setSubmitting(false)
+      return
+    }
 
-    // For each entry with a linked product, create stock movement (saida) and update quantity
+    // For each entry with a linked product, deduct stock atomically via RPC
+    const errors: string[] = []
     for (const log of insertedLogs) {
       const feedItem = feedItems.find(fi => fi.id === log.feed_item_id)
       if (!feedItem?.product_id) continue
 
-      const product = products.find(p => p.id === feedItem.product_id)
-      if (!product) continue
+      const { error: rpcError } = await (supabase.rpc as any)('deduct_stock_for_feed', {
+        p_product_id: feedItem.product_id,
+        p_quantity: log.quantity,
+        p_feed_log_id: log.id,
+        p_date: selectedDate,
+        p_item_name: feedItem.name,
+        p_item_unit: feedItem.unit,
+      })
 
-      // Create stock movement
-      await supabase.from('stock_movements').insert({
-        product_id: feedItem.product_id,
-        type: 'saida',
-        quantity: log.quantity,
-        reason: 'Alimentacao animal',
-        feed_log_id: log.id,
-        notes: `Auto: ${feedItem.name} - ${log.quantity} ${feedItem.unit}`,
-        date: selectedDate,
-      } as any)
+      if (rpcError) {
+        errors.push(`${feedItem.name}: ${rpcError.message}`)
+        // Rollback: delete the feed log that couldn't be deducted
+        await supabase.from('feed_logs').delete().eq('id', log.id)
+      }
+    }
 
-      // Deduct from product current_quantity
-      const newQty = Math.max(0, product.current_quantity - log.quantity)
-      await supabase.from('products').update({ current_quantity: newQty } as never).eq('id', feedItem.product_id)
+    if (errors.length > 0) {
+      setSubmitError('Stock insuficiente:\n' + errors.join('\n'))
     }
 
     setQuantities({}); setNotes('')
@@ -83,32 +91,55 @@ export default function Feed() {
   }
 
   const handleDelete = async (id: string) => {
-    // Find the log to restore stock
-    const log = logs.find(l => l.id === id)
-    if (log) {
-      const feedItem = feedItems.find(fi => fi.id === log.feed_item_id)
-      if (feedItem?.product_id) {
-        const product = products.find(p => p.id === feedItem.product_id)
-        if (product) {
-          // Restore stock
-          const newQty = product.current_quantity + log.quantity
-          await supabase.from('products').update({ current_quantity: newQty } as never).eq('id', feedItem.product_id)
-          // Remove stock movement
-          await supabase.from('stock_movements').delete().eq('feed_log_id', id)
-        }
-      }
+    if (!isAdmin) return
+    if (!confirm('Eliminar este registo? O stock sera restaurado.')) return
+
+    // Restore stock atomically via RPC
+    const { error } = await (supabase.rpc as any)('restore_stock_for_feed', { p_feed_log_id: id })
+    if (error) {
+      alert('Erro ao restaurar stock: ' + error.message)
+      return
     }
-    await supabase.from('feed_logs').delete().eq('id', id)
+
+    // Delete the feed log
+    const { error: delError } = await supabase.from('feed_logs').delete().eq('id', id)
+    if (delError) {
+      alert('Erro ao eliminar registo: ' + delError.message)
+      return
+    }
+
     refetchProducts()
     fetchDay(); fetchMonth()
   }
 
+  const handleRemoveFeedItem = async (item: typeof feedItems[0]) => {
+    if (!isAdmin) return
+    if (!confirm('Remover "' + item.name + '" da lista de alimentacao?\nOs registos historicos deste item tambem serao eliminados.')) return
+
+    // Bulk restore stock and delete logs atomically via RPC
+    const { error: restoreError } = await (supabase.rpc as any)('restore_stock_for_feed_item', { p_feed_item_id: item.id })
+    if (restoreError) {
+      alert('Erro ao restaurar stock: ' + restoreError.message)
+      return
+    }
+
+    // Now delete the feed item itself
+    const err = await removeItem(item.id)
+    if (err) {
+      alert('Erro ao remover item: ' + err.message)
+      return
+    }
+
+    refetchProducts(); fetchDay(); fetchMonth()
+  }
+
   const handleAddItem = async (ev: React.FormEvent) => {
     ev.preventDefault()
-    if (!selectedProductId) return
+    if (!isAdmin || !selectedProductId) return
     const product = products.find(p => p.id === selectedProductId)
     if (!product) return
-    await insertItem({ name: product.name, unit: product.unit, active: true, product_id: product.id } as any)
+    const err = await insertItem({ name: product.name, unit: product.unit, active: true, product_id: product.id } as any)
+    if (err) { alert('Erro ao adicionar item: ' + err.message); return }
     setSelectedProductId('')
     setItemModal(false)
   }
@@ -184,7 +215,8 @@ export default function Feed() {
               )}
             </div>
             <form onSubmit={handleSubmit}>
-              {activeItems.map(item => {
+              {loading && <p style={{ textAlign: 'center', color: '#a8a29e', padding: '1rem', fontSize: '0.875rem' }}>A carregar...</p>}
+              {!loading && activeItems.map(item => {
                 const stock = getStockInfo(item)
                 return (
                   <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid var(--surface-mid)' }}>
@@ -228,17 +260,25 @@ export default function Feed() {
                   </div>
                 )
               })}
-              {activeItems.length === 0 && (
+              {!loading && activeItems.length === 0 && (
                 <p style={{ textAlign: 'center', color: '#a8a29e', padding: '2rem', fontSize: '0.875rem' }}>
                   Nenhum item configurado. {isAdmin ? 'Clique em "Gerir Itens" para adicionar produtos do stock.' : 'Contacte um administrador.'}
                 </p>
               )}
+
+              {/* Error banner */}
+              {submitError && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: '#fee2e2', borderRadius: 'var(--radius-sm)', color: '#991b1b', fontSize: '0.8125rem', fontWeight: 500, whiteSpace: 'pre-line' }}>
+                  {submitError}
+                </div>
+              )}
+
               <div style={{ marginTop: '1.5rem' }}>
                 <label className="text-label" style={{ display: 'block', marginBottom: '0.5rem', marginLeft: 4 }}>Notas de Observacao</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Ex: Adicionado suplemento vitaminico no lote da manha..." className="input-field" style={{ resize: 'none' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
-                <button type="button" onClick={() => { setQuantities({}); setNotes('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'var(--on-surface-variant)', fontSize: '0.875rem', padding: '0.75rem 1.25rem' }}>Cancelar</button>
+                <button type="button" onClick={() => { setQuantities({}); setNotes(''); setSubmitError('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'var(--on-surface-variant)', fontSize: '0.875rem', padding: '0.75rem 1.25rem' }}>Cancelar</button>
                 <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.5rem', opacity: submitting ? 0.6 : 1 }} disabled={submitting}>
                   <span className="material-symbols-outlined" style={{ fontSize: 16 }}>save</span>{submitting ? 'A guardar...' : 'Submeter Registo'}
                 </button>
@@ -285,32 +325,13 @@ export default function Feed() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <button type="button" onClick={async () => { await updateItem(item.id, { active: !item.active } as any) }} title={item.active ? 'Desativar' : 'Ativar'} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                      <button type="button" onClick={async () => {
+                        const err = await updateItem(item.id, { active: !item.active } as any)
+                        if (err) alert('Erro: ' + err.message)
+                      }} title={item.active ? 'Desativar' : 'Ativar'} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: item.active ? 'var(--primary)' : '#a8a29e' }}>{item.active ? 'visibility' : 'visibility_off'}</span>
                       </button>
-                      <button type="button" onClick={async () => {
-                        if (!confirm('Remover "' + item.name + '" da lista de alimentacao?\nOs registos historicos deste item tambem serao eliminados.')) return
-                        // Delete associated feed logs first (and restore stock for each)
-                        const { data: itemLogs } = await supabase.from('feed_logs').select('id, quantity').eq('feed_item_id', item.id) as { data: { id: string; quantity: number }[] | null }
-                        if (itemLogs && itemLogs.length > 0) {
-                          // Restore stock for all logs of this item
-                          if (item.product_id) {
-                            const totalQty = itemLogs.reduce((sum, l) => sum + l.quantity, 0)
-                            const product = products.find(p => p.id === item.product_id)
-                            if (product) {
-                              await supabase.from('products').update({ current_quantity: product.current_quantity + totalQty } as never).eq('id', item.product_id)
-                            }
-                            // Delete stock movements linked to these logs
-                            for (const l of itemLogs) {
-                              await supabase.from('stock_movements').delete().eq('feed_log_id', l.id)
-                            }
-                          }
-                          // Delete feed logs
-                          await supabase.from('feed_logs').delete().eq('feed_item_id', item.id)
-                        }
-                        await removeItem(item.id)
-                        refetchProducts(); fetchDay(); fetchMonth()
-                      }} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
+                      <button type="button" onClick={() => handleRemoveFeedItem(item)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--error)' }}>delete</span>
                       </button>
                     </div>
