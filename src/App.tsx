@@ -8,6 +8,7 @@ import Activities from './pages/Activities'
 import Fuel from './pages/Fuel'
 import Feed from './pages/Feed'
 import SettingsPage from './pages/Settings'
+import Expenses from './pages/Expenses'
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="gasoleo" element={<Fuel />} />
             <Route path="alimentacao" element={<Feed />} />
             <Route element={<ProtectedRoute requiredRole="admin" />}>
+              <Route path="despesas" element={<Expenses />} />
               <Route path="definicoes" element={<SettingsPage />} />
             </Route>
           </Route>

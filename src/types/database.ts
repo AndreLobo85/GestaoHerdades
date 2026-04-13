@@ -113,6 +113,21 @@ export interface Profile {
   created_at: string
 }
 
+export interface Expense {
+  id: string
+  vehicle_id: string
+  date: string
+  km: number
+  description: string
+  invoice_number: string
+  invoice_amount: number
+  invoice_file_url: string | null
+  created_by: string | null
+  created_at: string
+  // joined
+  vehicle?: Vehicle
+}
+
 export interface FeedLog {
   id: string
   date: string
