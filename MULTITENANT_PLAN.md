@@ -368,6 +368,34 @@ Feature flags lidos de `tenant_modules` → substitui a tabela `role_views` atua
 3. Dono recebe email, cria password, entra, vê só a sua herdade
 ```
 
+### 5.4 Fluxo de criação de utilizadores — dois caminhos híbridos
+
+**Caminho A — Convite direto (pelo Super-Admin ou Admin de tenant):**
+```
+1. Admin no painel → "Convidar utilizador" (email + tenant + role)
+2. RPC admin_invite_user:
+   a. auth.admin.inviteUserByEmail(email, {data:{invite_tenant_id, role}})
+   b. Insert em tenant_users (status='pending') com tenant_id + role pré-definidos
+3. Utilizador recebe email → cria password → entra → já está no tenant certo
+```
+
+**Caminho B — Self-register + aprovação (mantém fluxo atual):**
+```
+1. Utilizador vai a /signup → cria conta em auth.users
+2. Trigger insere linha em profiles com status='pending', sem tenant
+3. Utilizador entra mas vê apenas ecrã "Aguarda aprovação do administrador"
+4. Super-admin vê lista de "Pending" no painel → escolhe tenant + role → aprova
+5. Insert em tenant_users (active) + profiles.status='active'
+6. Utilizador faz refreshSession() (ou volta a logar) → vê a herdade
+```
+
+Nos dois caminhos, o destino final é o mesmo: uma linha em `tenant_users` com (user_id, tenant_id, role, status='active').
+
+**Regras:**
+- Utilizadores self-registered **sem** tenant associado veem apenas a página "Aguarda aprovação" — qualquer query a dados operacionais devolve vazio via RLS.
+- Admin de tenant pode convidar apenas para o **seu** tenant; Super-Admin pode convidar para qualquer.
+- A mesma pessoa (email) pode pertencer a vários tenants — o mesmo `user_id` ligado a N linhas em `tenant_users`.
+
 ---
 
 ## 6. Plano de Migração Incremental
