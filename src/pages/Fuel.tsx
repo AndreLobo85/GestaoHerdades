@@ -158,13 +158,8 @@ export default function Fuel() {
         {/* Fleet sidebar */}
         <div style={{ position: 'sticky', top: '6rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="card" style={{ padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ marginBottom: '1rem' }}>
               <h3 className="font-display" style={{ fontWeight: 700 }}>Frota Ativa</h3>
-              {isAdmin && (
-                <button className="btn-secondary" onClick={() => setVehicleModal(true)} style={{ fontSize: '0.75rem' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add</span>Adicionar Veiculo
-                </button>
-              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {activeVehicles.map(v => (
