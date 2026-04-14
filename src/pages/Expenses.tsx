@@ -10,6 +10,8 @@ import type { Expense, ExpenseCategory, GeneralExpense } from '../types/database
 function VehicleExpenses() {
   const { isAdmin } = useAuth()
   const { data: vehicles } = useVehicles()
+  const { data: products } = useProducts()
+  const activeProducts = products.filter(p => p.active)
   const activeVehicles = vehicles.filter(v => v.active)
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -17,12 +19,12 @@ function VehicleExpenses() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], km: '', description: '', invoice_number: '', invoice_amount: '', invoice_file_url: null as string | null })
+  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], km: '', description: '', invoice_number: '', invoice_amount: '', invoice_file_url: null as string | null, product_id: '', product_quantity: '' })
 
   const fetchExpenses = useCallback(async () => {
     if (!selectedVehicle) return
     setLoading(true)
-    const { data } = await supabase.from('expenses').select('*, vehicle:vehicles(*)')
+    const { data } = await supabase.from('expenses').select('*, vehicle:vehicles(*), product:products(*)')
       .eq('vehicle_id', selectedVehicle).order('date', { ascending: false })
     setExpenses((data as Expense[]) ?? [])
     setLoading(false)
@@ -35,29 +37,63 @@ function VehicleExpenses() {
   }, [activeVehicles, selectedVehicle])
 
   const resetForm = () => {
-    setForm({ date: new Date().toISOString().split('T')[0], km: '', description: '', invoice_number: '', invoice_amount: '', invoice_file_url: null })
+    setForm({ date: new Date().toISOString().split('T')[0], km: '', description: '', invoice_number: '', invoice_amount: '', invoice_file_url: null, product_id: '', product_quantity: '' })
     setEditingId(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedVehicle) return
-    const payload = {
+    const payload: Record<string, unknown> = {
       vehicle_id: selectedVehicle, date: form.date, km: parseFloat(form.km) || 0,
       description: form.description, invoice_number: form.invoice_number, invoice_amount: parseFloat(form.invoice_amount) || 0,
     }
+    if (form.product_id) {
+      payload.product_id = form.product_id
+      payload.product_quantity = parseFloat(form.product_quantity) || 0
+    }
     if (editingId) {
+      if (!form.product_id) { payload.product_id = null; payload.product_quantity = null }
       await supabase.from('expenses').update(payload as never).eq('id', editingId)
     } else {
-      await supabase.from('expenses').insert(payload as any)
+      const { data: inserted, error } = await supabase.from('expenses').insert(payload as any).select().single() as { data: any; error: any }
+      if (!error && inserted && form.product_id && form.product_quantity) {
+        const qty = parseFloat(form.product_quantity)
+        if (qty > 0) {
+          await supabase.from('stock_movements').insert({
+            product_id: form.product_id, type: 'entrada', quantity: qty,
+            reason: 'Compra (Despesa Veiculo)', expense_id: inserted.id,
+            notes: form.description, date: form.date,
+          } as any)
+          const product = activeProducts.find(p => p.id === form.product_id)
+          if (product) {
+            await supabase.from('products').update({ current_quantity: product.current_quantity + qty } as never).eq('id', form.product_id)
+          }
+        }
+      }
     }
     resetForm(); setModalOpen(false); fetchExpenses()
   }
 
-  const handleDelete = async (id: string) => { if (!confirm('Eliminar esta despesa?')) return; await supabase.from('expenses').delete().eq('id', id); fetchExpenses() }
+  const handleDelete = async (id: string) => {
+    if (!confirm('Eliminar esta despesa?')) return
+    const exp = expenses.find(e => e.id === id)
+    if (exp?.product_id && exp.product_quantity) {
+      await supabase.from('stock_movements').insert({
+        product_id: exp.product_id, type: 'saida', quantity: exp.product_quantity,
+        reason: 'Reversao (Despesa eliminada)', expense_id: id,
+        notes: `Revertido: ${exp.description}`, date: new Date().toISOString().split('T')[0],
+      } as any)
+      const product = activeProducts.find(p => p.id === exp.product_id)
+      if (product) {
+        await supabase.from('products').update({ current_quantity: Math.max(0, product.current_quantity - exp.product_quantity) } as never).eq('id', exp.product_id)
+      }
+    }
+    await supabase.from('expenses').delete().eq('id', id); fetchExpenses()
+  }
 
   const handleEdit = (exp: Expense) => {
-    setForm({ date: exp.date, km: String(exp.km), description: exp.description, invoice_number: exp.invoice_number, invoice_amount: String(exp.invoice_amount), invoice_file_url: exp.invoice_file_url })
+    setForm({ date: exp.date, km: String(exp.km), description: exp.description, invoice_number: exp.invoice_number, invoice_amount: String(exp.invoice_amount), invoice_file_url: exp.invoice_file_url, product_id: exp.product_id ?? '', product_quantity: exp.product_quantity ? String(exp.product_quantity) : '' })
     setEditingId(exp.id); setModalOpen(true)
   }
 
@@ -216,7 +252,7 @@ function VehicleExpenses() {
             <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>Descricao</label>
             <input required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Ex: Mudanca de oleo, revisao, pneus..." className="input-field" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>N Fatura</label>
               <input value={form.invoice_number} onChange={e => setForm({ ...form, invoice_number: e.target.value })} placeholder="FT 2026/001" className="input-field" />
@@ -229,6 +265,36 @@ function VehicleExpenses() {
               </div>
             </div>
           </div>
+
+          {/* Product association (optional) */}
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: form.product_id ? '#f0fdf4' : '#fafafa', borderRadius: '0.875rem', border: `1px solid ${form.product_id ? '#bbf7d0' : '#f0eeec'}`, transition: 'all 0.15s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.625rem' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16, color: form.product_id ? '#3a6843' : '#a8a29e' }}>inventory_2</span>
+              <label style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: form.product_id ? '#3a6843' : '#78716c' }}>Associar a Produto (opcional)</label>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '0.5rem' }}>
+              <select value={form.product_id} onChange={e => setForm({ ...form, product_id: e.target.value, product_quantity: e.target.value ? form.product_quantity : '' })} className="input-field" style={{ fontSize: '0.8125rem' }}>
+                <option value="">Nenhum produto</option>
+                {activeProducts.map(p => <option key={p.id} value={p.id}>{p.name} ({p.current_quantity} {p.unit})</option>)}
+              </select>
+              {form.product_id && (
+                <input type="number" min="0.1" step="0.1" value={form.product_quantity} onChange={e => setForm({ ...form, product_quantity: e.target.value })} placeholder="Qtd" className="input-field" style={{ textAlign: 'center', fontSize: '0.8125rem' }} required />
+              )}
+            </div>
+            {form.product_id && !editingId && (
+              <p style={{ fontSize: '0.625rem', color: '#3a6843', marginTop: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>info</span>
+                O stock sera actualizado automaticamente ao registar.
+              </p>
+            )}
+            {form.product_id && editingId && (
+              <p style={{ fontSize: '0.625rem', color: '#78716c', marginTop: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>info</span>
+                Editar nao altera o stock. Elimine e crie novamente para corrigir.
+              </p>
+            )}
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
             <button type="button" onClick={() => { setModalOpen(false); resetForm() }} style={{ padding: '0.875rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, borderRadius: '0.875rem', border: 'none', background: '#f2f4f3', color: '#44483c', cursor: 'pointer' }}>Cancelar</button>
             <button type="submit" style={{ padding: '0.875rem 1.75rem', fontSize: '0.875rem', fontWeight: 700, borderRadius: '0.875rem', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, var(--primary), var(--primary-container))', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 14px rgba(121,60,0,0.2)' }}>

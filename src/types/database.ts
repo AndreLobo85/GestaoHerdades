@@ -145,10 +145,13 @@ export interface Expense {
   invoice_number: string
   invoice_amount: number
   invoice_file_url: string | null
+  product_id: string | null
+  product_quantity: number | null
   created_by: string | null
   created_at: string
   // joined
   vehicle?: Vehicle
+  product?: Product
 }
 
 export interface RoleView {

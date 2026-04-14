@@ -81,7 +81,7 @@ export default function Feed() {
     }
 
     if (errors.length > 0) {
-      setSubmitError('Stock insuficiente:\n' + errors.join('\n'))
+      setSubmitError(errors.join('\n'))
     }
 
     setQuantities({}); setNotes('')

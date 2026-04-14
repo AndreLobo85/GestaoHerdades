@@ -46,7 +46,7 @@ BEGIN
   -- Create audit movement
   INSERT INTO stock_movements (product_id, type, quantity, reason, feed_log_id, notes, date)
   VALUES (p_product_id, 'saida', p_quantity, 'Alimentacao animal', p_feed_log_id,
-          'Auto: ' || p_item_name || ' - ' || p_quantity || ' ' || p_item_unit, p_date);
+          'Auto: ' || p_item_name || ' - ' || p_quantity || ' ' || p_item_unit, p_date::date);
 END;
 $$;
 
