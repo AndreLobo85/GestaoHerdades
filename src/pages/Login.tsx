@@ -23,7 +23,7 @@ export default function Login() {
   }
 
   if (session && !isPending) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/select-tenant" replace />
   }
 
   const handleLogin = async (e: React.FormEvent) => {

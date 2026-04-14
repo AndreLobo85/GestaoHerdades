@@ -1,9 +1,11 @@
 import { useTenant } from '../contexts/TenantContext'
 import { useAuth } from '../contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function SelectTenant() {
-  const { availableTenants, switchTenant, currentTenant, loading } = useTenant()
+  const { availableTenants, switchTenant, currentTenant, loading, isPlatformAdmin } = useTenant()
   const { signOut, profile } = useAuth()
+  const navigate = useNavigate()
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center', color: '#78716c' }}>A carregar...</div>
@@ -19,7 +21,7 @@ export default function SelectTenant() {
           </p>
         </div>
 
-        {availableTenants.length === 0 ? (
+        {(availableTenants.length === 0 && !isPlatformAdmin) ? (
           <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
             <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#d6d3d1' }}>hourglass_empty</span>
             <p style={{ fontWeight: 600, marginTop: '1rem', fontSize: '1rem' }}>Aguarda aprovação</p>
@@ -30,6 +32,34 @@ export default function SelectTenant() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {isPlatformAdmin && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="card"
+                style={{
+                  padding: '1.25rem 1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  background: '#1c1917',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 22, color: 'white' }}>shield_person</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 700, fontSize: '1rem', color: 'white' }}>Painel Super-Admin</p>
+                  <p style={{ fontSize: '0.75rem', color: '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Gerir herdades da plataforma</p>
+                </div>
+                <span className="material-symbols-outlined" style={{ color: '#a8a29e' }}>arrow_forward</span>
+              </button>
+            )}
             {availableTenants.map(t => (
               <button
                 key={t.id}
