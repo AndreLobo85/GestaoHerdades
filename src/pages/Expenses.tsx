@@ -318,7 +318,19 @@ function CategoryExpenses({ category }: { category: ExpenseCategory }) {
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], description: '', invoice_number: '', invoice_amount: '', product_id: '', product_quantity: '' })
+
+  const handleFileUpload = async (expenseId: string, file: File) => {
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `general/${expenseId}.${ext}`
+    const { error } = await supabase.storage.from('invoices').upload(path, file, { upsert: true })
+    if (error) { alert('Erro ao carregar ficheiro: ' + error.message); setUploading(false); return }
+    const { data: urlData } = supabase.storage.from('invoices').getPublicUrl(path)
+    await supabase.from('general_expenses').update({ invoice_file_url: urlData.publicUrl } as never).eq('id', expenseId)
+    setUploading(false); fetchExpenses()
+  }
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true)
@@ -427,7 +439,7 @@ function CategoryExpenses({ category }: { category: ExpenseCategory }) {
       ) : (
         <div className="card" style={{ overflow: 'hidden' }}>
           <table className="data-table">
-            <thead><tr><th>Data</th><th>Descricao</th><th>Produto</th><th>N Fatura</th><th style={{ textAlign: 'right' }}>Valor</th><th style={{ width: 60 }}></th></tr></thead>
+            <thead><tr><th>Data</th><th>Descricao</th><th>Produto</th><th>N Fatura</th><th style={{ textAlign: 'right' }}>Valor</th><th>Fatura</th><th style={{ width: 60 }}></th></tr></thead>
             <tbody>
               {expenses.map(exp => (
                 <tr key={exp.id}>
@@ -442,6 +454,17 @@ function CategoryExpenses({ category }: { category: ExpenseCategory }) {
                   </td>
                   <td style={{ fontSize: '0.8125rem', color: '#78716c' }}>{exp.invoice_number || '—'}</td>
                   <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.875rem' }}>{exp.invoice_amount.toFixed(2)} €</td>
+                  <td>
+                    {exp.invoice_file_url ? (
+                      <a href={exp.invoice_file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>description</span>Ver
+                      </a>
+                    ) : (
+                      <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png'; input.onchange = (ev) => { const file = (ev.target as HTMLInputElement).files?.[0]; if (file) handleFileUpload(exp.id, file) }; input.click() }} disabled={uploading} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: '#a8a29e' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>upload_file</span>{uploading ? '...' : 'Anexar'}
+                      </button>
+                    )}
+                  </td>
                   {isAdmin && (
                     <td>
                       <div style={{ display: 'flex', gap: '0.25rem' }}>
