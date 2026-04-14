@@ -145,7 +145,7 @@ function StockDashboard() {
 
 /* ── Products CRUD Tab ─────────────────────────────────── */
 function ProductsTab() {
-  const { data: products, loading, insert, update, fetch: refresh } = useProducts()
+  const { data: products, loading, insert, update, remove, fetch: refresh } = useProducts()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({ name: '', unit: 'unidades', min_stock_alert: '', current_quantity: '', is_feed: false })
@@ -170,6 +170,13 @@ function ProductsTab() {
 
   const handleToggle = async (p: Product) => {
     await update(p.id, { active: !p.active } as any)
+    refresh()
+  }
+
+  const handleDelete = async (p: Product) => {
+    if (!confirm(`Eliminar o produto "${p.name}"?\n\nOs registos historicos de movimentos, alimentacao e despesas que referenciavam este produto serao mantidos, mas deixarao de ter ligacao.`)) return
+    const err = await remove(p.id)
+    if (err) { alert('Erro ao eliminar: ' + err.message); return }
     refresh()
   }
 
@@ -223,6 +230,9 @@ function ProductsTab() {
                         </button>
                         <button onClick={() => handleToggle(p)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }} title={p.active ? 'Desativar' : 'Ativar'}>
                           <span className="material-symbols-outlined" style={{ fontSize: 16, color: p.active ? '#dc2626' : '#3a6843' }}>{p.active ? 'visibility_off' : 'visibility'}</span>
+                        </button>
+                        <button onClick={() => handleDelete(p)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }} title="Eliminar">
+                          <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--error)' }}>delete</span>
                         </button>
                       </div>
                     </td>
