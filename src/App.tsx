@@ -13,6 +13,7 @@ import Feed from './pages/Feed'
 import SettingsPage from './pages/Settings'
 import Expenses from './pages/Expenses'
 import Stock from './pages/Stock'
+import SuperAdmin, { SuperAdminGuard } from './pages/SuperAdmin'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/select-tenant" element={<SelectTenant />} />
+            <Route path="/admin/*" element={<SuperAdminGuard><SuperAdmin /></SuperAdminGuard>} />
             <Route element={<TenantGate />}>
               <Route element={<Layout />}>
                 <Route index element={<Dashboard />} />

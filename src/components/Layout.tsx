@@ -27,7 +27,7 @@ const allMobileItems = [
 
 export default function Layout() {
   const { isAdmin, profile, allowedViews, signOut } = useAuth()
-  const { currentTenant, availableTenants, modules } = useTenant()
+  const { currentTenant, availableTenants, modules, isPlatformAdmin } = useTenant()
   const [profileOpen, setProfileOpen] = useState(false)
   const [tenantMenuOpen, setTenantMenuOpen] = useState(false)
 
@@ -88,6 +88,11 @@ export default function Layout() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {isPlatformAdmin && (
+            <NavLink to="/admin" title="Super-Admin" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', borderRadius: 8, background: '#1c1917', color: 'white', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 700 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>shield_person</span>Admin
+            </NavLink>
+          )}
           <button onClick={() => setProfileOpen(true)} title="O meu perfil"
             style={{ width: 32, height: 32, borderRadius: '50%', background: avatarUrl ? 'transparent' : 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.6875rem', fontWeight: 700, border: 'none', cursor: 'pointer', padding: 0, overflow: 'hidden' }}>
             {avatarUrl ? (
