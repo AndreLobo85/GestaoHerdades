@@ -46,24 +46,29 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [emp, act, fuel, feed, rec, expenses] = await Promise.all([
+      const [emp, act, fuel, feed, rec, expenses, genExpenses] = await Promise.all([
         supabase.from('employees').select('id', { count: 'exact', head: true }).eq('active', true),
         supabase.from('activities').select('hours').gte('date', som).lt('date', eom),
         supabase.from('fuel_logs').select('liters').gte('date', som).lt('date', eom),
         supabase.from('feed_logs').select('id', { count: 'exact', head: true }).gte('date', som).lt('date', eom),
         supabase.from('activities').select('*, employee:employees(*), activity_type:activity_types(*)').gte('date', som).lt('date', eom).order('date', { ascending: false }).limit(5),
         supabase.from('expenses').select('invoice_amount').gte('date', som).lt('date', eom),
+        supabase.from('general_expenses').select('invoice_amount').gte('date', som).lt('date', eom),
       ])
       const actData = (act.data as any[] ?? [])
       const fuelData = (fuel.data as any[] ?? [])
       const expData = (expenses.data as any[] ?? [])
+      const genExpData = (genExpenses.data as any[] ?? [])
+      const totalExpenses =
+        expData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0) +
+        genExpData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0)
       setStats({
         employees: emp.count ?? 0,
         hoursThisMonth: actData.reduce((s: number, a: any) => s + (a.hours || 0), 0),
         fuelThisMonth: fuelData.reduce((s: number, f: any) => s + (f.liters || 0), 0),
         feedLogsThisMonth: feed.count ?? 0,
         activitiesThisMonth: actData.length,
-        expensesThisMonth: expData.reduce((s: number, e: any) => s + (e.invoice_amount || 0), 0),
+        expensesThisMonth: totalExpenses,
       })
       setRecent((rec.data as Activity[]) ?? [])
       setLoading(false)
