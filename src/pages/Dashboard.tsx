@@ -170,7 +170,7 @@ export default function Dashboard() {
   function buildResumoSheet(period: string, kpis: { label: string; value: string; theme: TabTheme }[]) {
     const ws = XLSX.utils.aoa_to_sheet([
       ['📊  GESTAO AGRICOLA — RESUMO MENSAL'],
-      ['AgroPrecision — Relatorio Automatico'],
+      ['AgroPro — Relatorio Automatico'],
       ['Periodo: ' + period],
       [],
       ['INDICADOR', 'VALOR'],

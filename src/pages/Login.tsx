@@ -83,7 +83,7 @@ export default function Login() {
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>logout</span>
             Voltar ao Login
           </button>
-          <p style={{ marginTop: '2rem', fontSize: '0.75rem', color: '#a8a29e' }}>Gestao Herdades v1.0 — AgroPrecision</p>
+          <p style={{ marginTop: '2rem', fontSize: '0.75rem', color: '#a8a29e' }}>AgroPro — Plataforma de gestao agricola</p>
         </div>
       </div>
     )
@@ -95,7 +95,7 @@ export default function Login() {
         {/* Branding */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#365314', letterSpacing: '-0.03em', fontFamily: "'Manrope', sans-serif" }}>
-            AgroPrecision
+            AgroPro
           </h1>
           <p style={{ color: '#78716c', fontSize: '0.875rem', marginTop: '0.25rem', fontFamily: "'Manrope', sans-serif" }}>
             The Digital Agronomist
@@ -198,7 +198,7 @@ export default function Login() {
         </div>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.75rem', color: '#a8a29e' }}>
-          Gestao Herdades v1.0 — AgroPrecision
+          AgroPro — Plataforma de gestao agricola
         </p>
       </div>
 

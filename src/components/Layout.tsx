@@ -1,39 +1,50 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from '../contexts/TenantContext'
 import UserProfileModal from './UserProfileModal'
 
+// key: internal menu id · module: key in tenant_modules (if applicable)
 const allSideItems = [
   { to: '/', icon: 'dashboard', label: 'Dashboard', key: 'dashboard' },
-  { to: '/atividades', icon: 'timer', label: 'Horas/Atividades', key: 'atividades' },
-  { to: '/gasoleo', icon: 'local_gas_station', label: 'Consumo Gasoleo', key: 'gasoleo' },
-  { to: '/alimentacao', icon: 'agriculture', label: 'Alimentacao Animal', key: 'alimentacao' },
-  { to: '/stock', icon: 'inventory_2', label: 'Stock', key: 'stock' },
-  { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas' },
+  { to: '/atividades', icon: 'timer', label: 'Horas/Atividades', key: 'atividades', module: 'activities' },
+  { to: '/gasoleo', icon: 'local_gas_station', label: 'Consumo Gasoleo', key: 'gasoleo', module: 'fuel' },
+  { to: '/alimentacao', icon: 'agriculture', label: 'Alimentacao Animal', key: 'alimentacao', module: 'feed' },
+  { to: '/stock', icon: 'inventory_2', label: 'Stock', key: 'stock', module: 'stock' },
+  { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas', module: 'expenses' },
   { to: '/definicoes', icon: 'settings', label: 'Definicoes', key: 'definicoes' },
 ]
 
 const allMobileItems = [
   { to: '/', icon: 'dashboard', label: 'Painel', key: 'dashboard' },
-  { to: '/atividades', icon: 'history', label: 'Horas', key: 'atividades' },
-  { to: '/gasoleo', icon: 'ev_station', label: 'Gasoleo', key: 'gasoleo' },
-  { to: '/alimentacao', icon: 'pets', label: 'Alimentar', key: 'alimentacao' },
-  { to: '/stock', icon: 'inventory_2', label: 'Stock', key: 'stock' },
-  { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas' },
+  { to: '/atividades', icon: 'history', label: 'Horas', key: 'atividades', module: 'activities' },
+  { to: '/gasoleo', icon: 'ev_station', label: 'Gasoleo', key: 'gasoleo', module: 'fuel' },
+  { to: '/alimentacao', icon: 'pets', label: 'Alimentar', key: 'alimentacao', module: 'feed' },
+  { to: '/stock', icon: 'inventory_2', label: 'Stock', key: 'stock', module: 'stock' },
+  { to: '/despesas', icon: 'receipt_long', label: 'Despesas', key: 'despesas', module: 'expenses' },
   { to: '/definicoes', icon: 'settings', label: 'Config', key: 'definicoes' },
 ]
 
 export default function Layout() {
   const { isAdmin, profile, allowedViews, signOut } = useAuth()
+  const { currentTenant, availableTenants, modules } = useTenant()
   const [profileOpen, setProfileOpen] = useState(false)
+  const [tenantMenuOpen, setTenantMenuOpen] = useState(false)
 
-  // Filter by allowed views from DB; if no views loaded yet, admins see all, users see basics
-  const canSee = (key: string) => {
-    if (allowedViews.length > 0) return allowedViews.includes(key)
-    return isAdmin || !['despesas', 'definicoes'].includes(key)
+  const canSee = (item: { key: string; module?: string }) => {
+    // Definicoes only for admins
+    if (item.key === 'definicoes') return isAdmin
+    // If item maps to a tenant module and modules are loaded: respect the flag
+    if (item.module && Object.keys(modules).length > 0) {
+      if (modules[item.module] === false) return false
+    }
+    // Legacy fallback (role_views)
+    if (allowedViews.length > 0) return allowedViews.includes(item.key)
+    // Default: users see non-admin pages
+    return isAdmin || !['despesas', 'definicoes'].includes(item.key)
   }
-  const sideItems = allSideItems.filter(i => canSee(i.key))
-  const mobileItems = allMobileItems.filter(i => canSee(i.key))
+  const sideItems = allSideItems.filter(canSee)
+  const mobileItems = allMobileItems.filter(canSee)
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -46,10 +57,35 @@ export default function Layout() {
       <UserProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
       {/* Top Nav */}
       <header className="top-nav">
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           <NavLink to="/" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#365314', letterSpacing: '-0.03em', textDecoration: 'none', fontFamily: "'Manrope', sans-serif" }}>
-            AgroPrecision
+            AgroPro
           </NavLink>
+          {currentTenant && (
+            <div style={{ position: 'relative' }}>
+              <button onClick={() => availableTenants.length > 1 && setTenantMenuOpen(o => !o)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.75rem', borderRadius: 8, background: '#ecfccb', border: 'none', cursor: availableTenants.length > 1 ? 'pointer' : 'default', fontSize: '0.8125rem', fontWeight: 700, color: '#365314' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>agriculture</span>
+                {currentTenant.name}
+                {availableTenants.length > 1 && <span className="material-symbols-outlined" style={{ fontSize: 14 }}>expand_more</span>}
+              </button>
+              {tenantMenuOpen && (
+                <>
+                  <div onClick={() => setTenantMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                  <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 11, background: 'white', borderRadius: 12, boxShadow: '0 6px 24px rgba(0,0,0,0.12)', border: '1px solid #f0eeec', padding: '0.5rem', minWidth: 240 }}>
+                    <p style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a8a29e', padding: '0.5rem 0.75rem' }}>Trocar de herdade</p>
+                    {availableTenants.map(t => (
+                      <NavLink key={t.id} to="/select-tenant" onClick={() => setTenantMenuOpen(false)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 0.75rem', borderRadius: 8, textDecoration: 'none', color: 'var(--on-surface)', background: t.id === currentTenant.id ? '#ecfccb' : 'transparent', fontWeight: 600, fontSize: '0.8125rem' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#365314' }}>agriculture</span>
+                        {t.name}
+                      </NavLink>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <button onClick={() => setProfileOpen(true)} title="O meu perfil"
@@ -71,8 +107,8 @@ export default function Layout() {
         {/* Sidebar */}
         <aside className="sidebar hide-mobile">
           <div style={{ marginBottom: '1.5rem', padding: '0 0.5rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 900, color: '#365314' }}>Gestao Agricola</h2>
-            <p style={{ fontSize: '0.75rem', color: '#78716c', fontFamily: "'Manrope', sans-serif" }}>The Digital Agronomist</p>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 900, color: '#365314' }}>{currentTenant?.name || 'AgroPro'}</h2>
+            <p style={{ fontSize: '0.75rem', color: '#78716c', fontFamily: "'Manrope', sans-serif" }}>Powered by AgroPro</p>
           </div>
           <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             {sideItems.map(item => (
