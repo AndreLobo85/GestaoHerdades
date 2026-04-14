@@ -3,6 +3,7 @@ import { NavLink, useParams, Routes, Route, Link, useNavigate } from 'react-rout
 import { supabase } from '../lib/supabase'
 import { useTenant } from '../contexts/TenantContext'
 import Modal from '../components/ui/Modal'
+import CreateUserModal from '../components/CreateUserModal'
 
 interface TenantRow {
   id: string
@@ -47,7 +48,7 @@ export default function SuperAdmin() {
           <NavLink to="/admin/pendentes" style={({ isActive }) => ({ padding: '0.375rem 0.75rem', borderRadius: 8, fontSize: '0.8125rem', textDecoration: 'none', color: isActive ? 'white' : '#a8a29e', fontWeight: 600, background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent' })}>Pendentes</NavLink>
         </nav>
         <div style={{ marginLeft: 'auto' }}>
-          <Link to="/" style={{ color: '#a8a29e', fontSize: '0.8125rem', textDecoration: 'none' }}>← Voltar à app</Link>
+          <Link to="/select-tenant" style={{ color: '#a8a29e', fontSize: '0.8125rem', textDecoration: 'none' }}>← Voltar</Link>
         </div>
       </header>
       <main style={{ padding: '2rem' }}>
@@ -63,6 +64,7 @@ export default function SuperAdmin() {
 
 /* ── Tenants List ────────────────────────────────── */
 function TenantsList() {
+  const { switchTenant } = useTenant()
   const [tenants, setTenants] = useState<TenantRow[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -75,6 +77,10 @@ function TenantsList() {
   }, [])
 
   useEffect(() => { fetch() }, [fetch])
+
+  const handleEnter = async (tenantId: string) => {
+    await switchTenant(tenantId)
+  }
 
   return (
     <div>
@@ -98,7 +104,12 @@ function TenantsList() {
                   <td style={{ fontSize: '0.8125rem' }}>{t.plan}</td>
                   <td style={{ textAlign: 'right', fontWeight: 700 }}>{t.users_count}</td>
                   <td style={{ textAlign: 'right', fontWeight: 700 }}>{t.modules_enabled}/{MODULE_KEYS.length}</td>
-                  <td><Link to={`/admin/herdades/${t.id}`} style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.8125rem', textDecoration: 'none' }}>Gerir →</Link></td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                      <Link to={`/admin/herdades/${t.id}`} style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.8125rem', textDecoration: 'none' }}>Gerir →</Link>
+                      <button onClick={() => handleEnter(t.id)} style={{ background: '#365314', color: 'white', border: 'none', cursor: 'pointer', padding: '0.25rem 0.75rem', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Entrar →</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -153,13 +164,12 @@ interface TenantUser { user_id: string; email: string; full_name: string | null;
 function TenantDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { switchTenant } = useTenant()
   const [tenant, setTenant] = useState<TenantRow | null>(null)
   const [users, setUsers] = useState<TenantUser[]>([])
   const [modules, setModules] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
-  const [assignEmail, setAssignEmail] = useState('')
-  const [assignRole, setAssignRole] = useState('utilizador')
-  const [assignErr, setAssignErr] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -188,13 +198,6 @@ function TenantDetail() {
     if (error) alert(error.message); else fetch()
   }
 
-  const handleAssign = async (e: React.FormEvent) => {
-    e.preventDefault(); setAssignErr('')
-    const { error } = await (supabase.rpc as any)('admin_assign_user', { p_tenant_id: id, p_email: assignEmail.trim().toLowerCase(), p_role: assignRole })
-    if (error) { setAssignErr(error.message); return }
-    setAssignEmail(''); setAssignRole('utilizador'); fetch()
-  }
-
   const handleRemove = async (userId: string) => {
     if (!confirm('Remover este utilizador da herdade?')) return
     await (supabase.rpc as any)('admin_remove_user_from_tenant', { p_tenant_id: id, p_user_id: userId })
@@ -206,7 +209,12 @@ function TenantDetail() {
 
   return (
     <div>
-      <button onClick={() => navigate('/admin')} className="btn-ghost" style={{ marginBottom: '1rem' }}>← Voltar</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <button onClick={() => navigate('/admin')} className="btn-ghost">← Voltar</button>
+        <button onClick={() => switchTenant(id)} style={{ background: '#365314', color: 'white', border: 'none', cursor: 'pointer', padding: '0.5rem 1rem', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 700 }}>
+          Entrar na herdade →
+        </button>
+      </div>
       <h1 style={{ fontSize: '1.75rem', fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{tenant.name}</h1>
       <p style={{ color: '#78716c', marginBottom: '1.5rem', fontSize: '0.875rem' }}>{tenant.slug} · {tenant.plan} · Estado: <strong>{tenant.status}</strong></p>
 
@@ -237,17 +245,14 @@ function TenantDetail() {
 
       {/* Users */}
       <div className="card" style={{ padding: '1.25rem', marginTop: '1.5rem' }}>
-        <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Utilizadores ({users.length})</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h3 style={{ fontWeight: 700 }}>Utilizadores ({users.length})</h3>
+          <button onClick={() => setCreateOpen(true)} className="btn-primary" style={{ padding: '0.5rem 0.875rem', fontSize: '0.8125rem' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>person_add</span>Novo Utilizador
+          </button>
+        </div>
 
-        <form onSubmit={handleAssign} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <input required value={assignEmail} onChange={e => setAssignEmail(e.target.value)} placeholder="email@exemplo.pt" type="email" className="input-field" style={{ flex: 1, minWidth: 200 }} />
-          <select value={assignRole} onChange={e => setAssignRole(e.target.value)} className="input-field" style={{ width: 140 }}>
-            <option value="utilizador">Utilizador</option>
-            <option value="admin">Admin</option>
-          </select>
-          <button type="submit" className="btn-primary">Adicionar</button>
-        </form>
-        {assignErr && <p style={{ color: 'var(--error)', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>{assignErr}</p>}
+        <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} onSaved={() => { setCreateOpen(false); fetch() }} tenantId={id} tenantName={tenant.name} />
 
         <table className="data-table">
           <thead><tr><th>Nome</th><th>Email</th><th>Role</th><th>Estado</th><th></th></tr></thead>
