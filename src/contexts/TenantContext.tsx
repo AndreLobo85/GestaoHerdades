@@ -74,11 +74,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const switchTenant = async (tenantId: string) => {
+    setLoading(true)
     const { error } = await (supabase.rpc as any)('switch_tenant', { p_tenant_id: tenantId })
-    if (error) { alert('Erro ao trocar de herdade: ' + error.message); return }
+    if (error) { alert('Erro ao trocar de herdade: ' + error.message); setLoading(false); return }
     await supabase.auth.refreshSession()
-    await fetchAll()
-    window.location.href = '/'
+    window.location.replace('/')
   }
 
   const claims = parseClaims()
