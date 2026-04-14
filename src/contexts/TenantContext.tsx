@@ -52,8 +52,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     const claims = parseClaims()
     setIsPlatformAdmin(claims.is_platform_admin)
 
-    const { data: tenants } = await supabase.rpc('list_my_tenants') as { data: TenantSummary[] | null }
-    setAvailableTenants(tenants ?? [])
+    const { data: tenants } = await (supabase.rpc as any)('list_my_tenants')
+    setAvailableTenants((tenants as TenantSummary[] | null) ?? [])
 
     if (claims.tenant_id) {
       const { data: mods } = await supabase
@@ -74,7 +74,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const switchTenant = async (tenantId: string) => {
-    const { error } = await supabase.rpc('switch_tenant', { p_tenant_id: tenantId })
+    const { error } = await (supabase.rpc as any)('switch_tenant', { p_tenant_id: tenantId })
     if (error) { alert('Erro ao trocar de herdade: ' + error.message); return }
     await supabase.auth.refreshSession()
     await fetchAll()

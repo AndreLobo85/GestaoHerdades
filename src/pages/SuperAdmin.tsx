@@ -69,7 +69,7 @@ function TenantsList() {
 
   const fetch = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.rpc('admin_list_tenants')
+    const { data } = await (supabase.rpc as any)('admin_list_tenants')
     setTenants((data as TenantRow[]) ?? [])
     setLoading(false)
   }, [])
@@ -121,7 +121,7 @@ function CreateTenantModal({ open, onClose, onSaved }: { open: boolean; onClose:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setErr(''); setSaving(true)
-    const { error } = await supabase.rpc('admin_create_tenant', { p_name: name.trim(), p_slug: slug.trim(), p_plan: plan, p_status: status })
+    const { error } = await (supabase.rpc as any)('admin_create_tenant', { p_name: name.trim(), p_slug: slug.trim(), p_plan: plan, p_status: status })
     setSaving(false)
     if (error) { setErr(error.message); return }
     setName(''); setSlug(''); setPlan('starter'); setStatus('trial')
@@ -163,11 +163,11 @@ function TenantDetail() {
 
   const fetch = useCallback(async () => {
     setLoading(true)
-    const { data: tenants } = await supabase.rpc('admin_list_tenants')
+    const { data: tenants } = await (supabase.rpc as any)('admin_list_tenants')
     setTenant(((tenants as TenantRow[]) ?? []).find(t => t.id === id) ?? null)
-    const { data: us } = await supabase.rpc('admin_list_tenant_users', { p_tenant_id: id })
+    const { data: us } = await (supabase.rpc as any)('admin_list_tenant_users', { p_tenant_id: id })
     setUsers((us as TenantUser[]) ?? [])
-    const { data: mods } = await supabase.rpc('admin_list_tenant_modules', { p_tenant_id: id })
+    const { data: mods } = await (supabase.rpc as any)('admin_list_tenant_modules', { p_tenant_id: id })
     const map: Record<string, boolean> = {}
     for (const k of MODULE_KEYS) map[k] = true
     for (const m of (mods ?? []) as { module_key: string; enabled: boolean }[]) map[m.module_key] = m.enabled
@@ -179,25 +179,25 @@ function TenantDetail() {
 
   const toggleModule = async (key: string, enabled: boolean) => {
     setModules(m => ({ ...m, [key]: enabled }))
-    const { error } = await supabase.rpc('admin_toggle_module', { p_tenant_id: id, p_module_key: key, p_enabled: enabled })
+    const { error } = await (supabase.rpc as any)('admin_toggle_module', { p_tenant_id: id, p_module_key: key, p_enabled: enabled })
     if (error) { alert('Erro: ' + error.message); fetch() }
   }
 
   const updateStatus = async (status: string) => {
-    const { error } = await supabase.rpc('admin_update_tenant', { p_tenant_id: id, p_status: status })
+    const { error } = await (supabase.rpc as any)('admin_update_tenant', { p_tenant_id: id, p_status: status })
     if (error) alert(error.message); else fetch()
   }
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault(); setAssignErr('')
-    const { error } = await supabase.rpc('admin_assign_user', { p_tenant_id: id, p_email: assignEmail.trim().toLowerCase(), p_role: assignRole })
+    const { error } = await (supabase.rpc as any)('admin_assign_user', { p_tenant_id: id, p_email: assignEmail.trim().toLowerCase(), p_role: assignRole })
     if (error) { setAssignErr(error.message); return }
     setAssignEmail(''); setAssignRole('utilizador'); fetch()
   }
 
   const handleRemove = async (userId: string) => {
     if (!confirm('Remover este utilizador da herdade?')) return
-    await supabase.rpc('admin_remove_user_from_tenant', { p_tenant_id: id, p_user_id: userId })
+    await (supabase.rpc as any)('admin_remove_user_from_tenant', { p_tenant_id: id, p_user_id: userId })
     fetch()
   }
 
@@ -279,11 +279,11 @@ function PendingUsers() {
   const fetch = useCallback(async () => {
     setLoading(true)
     const [{ data: p }, { data: t }] = await Promise.all([
-      supabase.rpc('admin_list_pending_users'),
-      supabase.rpc('admin_list_tenants'),
+      (supabase.rpc as any)('admin_list_pending_users'),
+      (supabase.rpc as any)('admin_list_tenants'),
     ])
-    setPending((p as PendingUser[]) ?? [])
-    setTenants((t as TenantRow[]) ?? [])
+    setPending((p as PendingUser[] | null) ?? [])
+    setTenants((t as TenantRow[] | null) ?? [])
     setLoading(false)
   }, [])
 
@@ -292,7 +292,7 @@ function PendingUsers() {
   const approve = async (userId: string, email: string) => {
     const pick = picks[userId]
     if (!pick?.tenant) { alert('Escolha uma herdade.'); return }
-    const { error } = await supabase.rpc('admin_assign_user', { p_tenant_id: pick.tenant, p_email: email, p_role: pick.role || 'utilizador' })
+    const { error } = await (supabase.rpc as any)('admin_assign_user', { p_tenant_id: pick.tenant, p_email: email, p_role: pick.role || 'utilizador' })
     if (error) { alert(error.message); return }
     fetch()
   }
