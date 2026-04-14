@@ -40,9 +40,36 @@ export default function Fuel() {
   }
   const handleDelete = async (id: string) => { if (!confirm('Eliminar?')) return; await supabase.from('fuel_logs').delete().eq('id', id); fetchLogs() }
   const handleAddV = async (e: React.FormEvent) => { e.preventDefault(); await insertVehicle({ ...vf, current_km: parseFloat(vf.current_km) || 0, active: true }); setVf({ brand: '', model: '', plate: '', vehicle_type: 'vehicle', current_km: '' }); setVehicleModal(false) }
-  const handleExport = () => {
-    exportToCSV('gasoleo_mensal', ['Data', 'Veiculo', 'Matricula', 'Tipo', 'H/Km', 'Litros'],
-      logs.map(f => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.vehicle?.plate ?? '', f.fuel_type === 'agricola' ? 'Agricola' : 'Rodoviario', String(f.hours_or_km), String(f.liters)]))
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [exportMonth, setExportMonth] = useState(() => {
+    const n = new Date()
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
+  })
+
+  const runExport = async (startDate: string, endDate: string, filename: string) => {
+    const { data } = await supabase.from('fuel_logs').select('*, vehicle:vehicles(*)').gte('date', startDate).lt('date', endDate).order('date', { ascending: false })
+    const rows = (data as FuelLog[]) ?? []
+    exportToCSV(filename, ['Data', 'Veiculo', 'Matricula', 'Tipo', 'H/Km', 'Litros'],
+      rows.map(f => [formatDate(f.date), f.vehicle ? `${f.vehicle.brand} ${f.vehicle.model}` : '', f.vehicle?.plate ?? '', f.fuel_type === 'agricola' ? 'Agricola' : 'Rodoviario', String(f.hours_or_km), String(f.liters)]))
+    setExportMenuOpen(false)
+  }
+
+  const handleExportMonth = () => {
+    const [y, m] = exportMonth.split('-').map(Number)
+    const s = `${y}-${String(m).padStart(2, '0')}-01`
+    const e = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
+    runExport(s, e, `gasoleo_${y}_${String(m).padStart(2, '0')}`)
+  }
+
+  const handleExportYTD = () => {
+    const n = new Date()
+    const y = n.getFullYear()
+    const s = `${y}-01-01`
+    const e = `${y}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+    // include end date by incrementing one day (lt is exclusive)
+    const endDate = new Date(e); endDate.setDate(endDate.getDate() + 1)
+    const eStr = endDate.toISOString().split('T')[0]
+    runExport(s, eStr, `gasoleo_${y}_ano_ate_hoje`)
   }
   const totalLiters = logs.reduce((s, f) => s + f.liters, 0)
 
@@ -132,9 +159,30 @@ export default function Fuel() {
             <div className="card" style={{ overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem' }}>
                 <h3 className="font-display" style={{ fontWeight: 700 }}>Registos Recentes</h3>
-                <button onClick={handleExport} className="text-primary" style={{ fontWeight: 700, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer' }}>
-                  Exportar <span className="material-symbols-outlined" style={{ fontSize: 14 }}>download</span>
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <button onClick={() => setExportMenuOpen(o => !o)} className="text-primary" style={{ fontWeight: 700, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer' }}>
+                    Exportar <span className="material-symbols-outlined" style={{ fontSize: 14 }}>download</span>
+                  </button>
+                  {exportMenuOpen && (
+                    <>
+                      <div onClick={() => setExportMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                      <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 11, background: 'white', borderRadius: '0.875rem', boxShadow: '0 6px 24px rgba(0,0,0,0.12)', border: '1px solid #f0eeec', padding: '1rem', minWidth: 240, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c', marginBottom: 6 }}>Mes especifico</label>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)} className="input-field" style={{ fontSize: '0.8125rem', flex: 1 }} />
+                            <button onClick={handleExportMonth} className="btn-primary" style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>Exportar</button>
+                          </div>
+                        </div>
+                        <div style={{ borderTop: '1px solid #f0eeec', paddingTop: '0.75rem' }}>
+                          <button onClick={handleExportYTD} className="btn-ghost" style={{ width: '100%', justifyContent: 'center', fontSize: '0.8125rem', padding: '0.625rem' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>calendar_today</span>Ano ate a data
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               <table className="data-table"><thead><tr>
                 <th>Data</th><th>Veiculo</th><th>Tipo</th><th style={{ textAlign: 'right' }}>KM</th><th style={{ textAlign: 'right' }}>Litros</th><th>Registado por</th>{isAdmin && <th style={{ width: 40 }}></th>}
