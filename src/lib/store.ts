@@ -121,7 +121,7 @@ export function useFeedLogs() {
 
     const { data, error } = await supabase
       .from('feed_logs')
-      .select('*, feed_item:feed_items(*)')
+      .select('*, feed_item:feed_items(*), product:products(*)')
       .gte('date', startDate)
       .lt('date', endDate)
       .order('date', { ascending: false })

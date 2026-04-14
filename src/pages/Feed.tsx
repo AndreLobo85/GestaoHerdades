@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import Modal from '../components/ui/Modal'
-import { useFeedItems, useProducts } from '../lib/store'
+import { useProducts } from '../lib/store'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { exportToCSV, formatDate } from '../lib/export'
-import type { FeedLog, Product } from '../types/database'
+import type { FeedLog } from '../types/database'
 
 export default function Feed() {
   const { isAdmin } = useAuth()
@@ -12,34 +11,31 @@ export default function Feed() {
   const [logs, setLogs] = useState<FeedLog[]>([])
   const [allMonth, setAllMonth] = useState<FeedLog[]>([])
   const [loading, setLoading] = useState(true)
-  const [itemModal, setItemModal] = useState(false)
-  const { data: feedItems, insert: insertItem, update: updateItem, remove: removeItem } = useFeedItems()
   const { data: products, fetch: refetchProducts } = useProducts()
-  const activeItems = feedItems.filter(i => i.active)
+  const feedProducts = products.filter(p => p.active && p.is_feed)
   const [quantities, setQuantities] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState('')
-  const [selectedProductId, setSelectedProductId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
   const fetchDay = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('feed_logs').select('*, feed_item:feed_items(*)').eq('date', selectedDate).order('created_at', { ascending: true })
+    const { data } = await supabase.from('feed_logs')
+      .select('*, feed_item:feed_items(*), product:products(*)')
+      .eq('date', selectedDate).order('created_at', { ascending: true })
     setLogs((data as FeedLog[]) ?? []); setLoading(false)
   }, [selectedDate])
 
   const fetchMonth = useCallback(async () => {
     const [y, m] = selectedDate.split('-').map(Number)
     const s = `${y}-${String(m).padStart(2, '0')}-01`, e = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
-    const { data } = await supabase.from('feed_logs').select('*, feed_item:feed_items(*)').gte('date', s).lt('date', e)
+    const { data } = await supabase.from('feed_logs')
+      .select('*, feed_item:feed_items(*), product:products(*)')
+      .gte('date', s).lt('date', e)
     setAllMonth((data as FeedLog[]) ?? [])
   }, [selectedDate])
 
   useEffect(() => { fetchDay(); fetchMonth() }, [fetchDay, fetchMonth])
-
-  // Get products already linked to feed items
-  const linkedProductIds = feedItems.map(fi => fi.product_id).filter(Boolean)
-  const availableProducts = products.filter(p => p.active && !linkedProductIds.includes(p.id))
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
@@ -48,9 +44,8 @@ export default function Feed() {
     if (!entries.length) return
     setSubmitting(true)
 
-    // Build feed log inserts
-    const ins = entries.map(([fid, q]) => ({ date: selectedDate, feed_item_id: fid, quantity: parseFloat(q), notes }))
-    const { data: insertedLogs, error: logError } = await supabase.from('feed_logs').insert(ins as any).select('id, feed_item_id, quantity') as { data: { id: string; feed_item_id: string; quantity: number }[] | null; error: any }
+    const ins = entries.map(([pid, q]) => ({ date: selectedDate, product_id: pid, quantity: parseFloat(q), notes }))
+    const { data: insertedLogs, error: logError } = await supabase.from('feed_logs').insert(ins as any).select('id, product_id, quantity') as { data: { id: string; product_id: string; quantity: number }[] | null; error: any }
 
     if (logError || !insertedLogs) {
       setSubmitError('Erro ao guardar registos: ' + (logError?.message || 'erro desconhecido'))
@@ -58,32 +53,25 @@ export default function Feed() {
       return
     }
 
-    // For each entry with a linked product, deduct stock atomically via RPC
     const errors: string[] = []
     for (const log of insertedLogs) {
-      const feedItem = feedItems.find(fi => fi.id === log.feed_item_id)
-      if (!feedItem?.product_id) continue
-
+      const product = feedProducts.find(p => p.id === log.product_id)
+      if (!product) continue
       const { error: rpcError } = await (supabase.rpc as any)('deduct_stock_for_feed', {
-        p_product_id: feedItem.product_id,
+        p_product_id: product.id,
         p_quantity: log.quantity,
         p_feed_log_id: log.id,
         p_date: selectedDate,
-        p_item_name: feedItem.name,
-        p_item_unit: feedItem.unit,
+        p_item_name: product.name,
+        p_item_unit: product.unit,
       })
-
       if (rpcError) {
-        errors.push(`${feedItem.name}: ${rpcError.message}`)
-        // Rollback: delete the feed log that couldn't be deducted
+        errors.push(`${product.name}: ${rpcError.message}`)
         await supabase.from('feed_logs').delete().eq('id', log.id)
       }
     }
 
-    if (errors.length > 0) {
-      setSubmitError(errors.join('\n'))
-    }
-
+    if (errors.length > 0) setSubmitError(errors.join('\n'))
     setQuantities({}); setNotes('')
     setSubmitting(false)
     refetchProducts()
@@ -93,69 +81,24 @@ export default function Feed() {
   const handleDelete = async (id: string) => {
     if (!isAdmin) return
     if (!confirm('Eliminar este registo? O stock sera restaurado.')) return
-
-    // Restore stock atomically via RPC
     const { error } = await (supabase.rpc as any)('restore_stock_for_feed', { p_feed_log_id: id })
-    if (error) {
-      alert('Erro ao restaurar stock: ' + error.message)
-      return
-    }
-
-    // Delete the feed log
+    if (error) { alert('Erro ao restaurar stock: ' + error.message); return }
     const { error: delError } = await supabase.from('feed_logs').delete().eq('id', id)
-    if (delError) {
-      alert('Erro ao eliminar registo: ' + delError.message)
-      return
-    }
-
-    refetchProducts()
-    fetchDay(); fetchMonth()
-  }
-
-  const handleRemoveFeedItem = async (item: typeof feedItems[0]) => {
-    if (!isAdmin) return
-    if (!confirm('Remover "' + item.name + '" da lista de alimentacao?\nOs registos historicos deste item tambem serao eliminados.')) return
-
-    // Bulk restore stock and delete logs atomically via RPC
-    const { error: restoreError } = await (supabase.rpc as any)('restore_stock_for_feed_item', { p_feed_item_id: item.id })
-    if (restoreError) {
-      alert('Erro ao restaurar stock: ' + restoreError.message)
-      return
-    }
-
-    // Now delete the feed item itself
-    const err = await removeItem(item.id)
-    if (err) {
-      alert('Erro ao remover item: ' + err.message)
-      return
-    }
-
+    if (delError) { alert('Erro ao eliminar registo: ' + delError.message); return }
     refetchProducts(); fetchDay(); fetchMonth()
-  }
-
-  const handleAddItem = async (ev: React.FormEvent) => {
-    ev.preventDefault()
-    if (!isAdmin || !selectedProductId) return
-    const product = products.find(p => p.id === selectedProductId)
-    if (!product) return
-    const err = await insertItem({ name: product.name, unit: product.unit, active: true, product_id: product.id })
-    if (err) { alert('Erro ao adicionar item: ' + err.message); return }
-    setSelectedProductId('')
-    setItemModal(false)
   }
 
   const handleExport = () => {
     const [y, m] = selectedDate.split('-')
-    exportToCSV(`alimentacao_${y}_${m}`, ['Data', 'Item', 'Qtd', 'Un', 'Notas'], allMonth.map(f => [formatDate(f.date), f.feed_item?.name ?? '', String(f.quantity), f.feed_item?.unit ?? '', f.notes]))
+    exportToCSV(`alimentacao_${y}_${m}`, ['Data', 'Item', 'Qtd', 'Un', 'Notas'],
+      allMonth.map(f => [formatDate(f.date), f.product?.name ?? f.feed_item?.name ?? '', String(f.quantity), f.product?.unit ?? f.feed_item?.unit ?? '', f.notes]))
   }
 
-  const dayTotals = logs.reduce<Record<string, number>>((a, l) => { a[l.feed_item_id] = (a[l.feed_item_id] || 0) + l.quantity; return a }, {})
-
-  // Helper to get stock info for a feed item
-  const getStockInfo = (feedItem: { product_id: string | null }): Product | undefined => {
-    if (!feedItem.product_id) return undefined
-    return products.find(p => p.id === feedItem.product_id)
-  }
+  const dayTotals = logs.reduce<Record<string, number>>((a, l) => {
+    const key = l.product_id ?? l.feed_item_id ?? ''
+    if (key) a[key] = (a[key] || 0) + l.quantity
+    return a
+  }, {})
 
   return (
     <div>
@@ -175,100 +118,81 @@ export default function Feed() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }} className="feed-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Stock alerts for feed items */}
-          {activeItems.some(item => {
-            const stock = getStockInfo(item)
-            return stock && stock.current_quantity <= stock.min_stock_alert
-          }) && (
+          {feedProducts.some(p => p.current_quantity <= p.min_stock_alert && p.min_stock_alert > 0) && (
             <div className="card" style={{ padding: '1.25rem', border: '1px solid #f59e0b33', background: '#fef3c720' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#f59e0b' }}>warning</span>
                 <h4 style={{ fontWeight: 700, fontSize: '0.875rem', color: '#92400e' }}>Stock Baixo</h4>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {activeItems.filter(item => {
-                  const stock = getStockInfo(item)
-                  return stock && stock.current_quantity <= stock.min_stock_alert
-                }).map(item => {
-                  const stock = getStockInfo(item)!
-                  return (
-                    <span key={item.id} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem', borderRadius: 99, background: stock.current_quantity === 0 ? '#fee2e2' : '#fef9c3', color: stock.current_quantity === 0 ? '#991b1b' : '#92400e', fontWeight: 600 }}>
-                      {item.name}: {stock.current_quantity} {stock.unit}
-                    </span>
-                  )
-                })}
+                {feedProducts.filter(p => p.current_quantity <= p.min_stock_alert && p.min_stock_alert > 0).map(p => (
+                  <span key={p.id} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem', borderRadius: 99, background: p.current_quantity === 0 ? '#fee2e2' : '#fef9c3', color: p.current_quantity === 0 ? '#991b1b' : '#92400e', fontWeight: 600 }}>
+                    {p.name}: {p.current_quantity} {p.unit}
+                  </span>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Daily composition */}
           <div className="card" style={{ padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <span className="material-symbols-outlined text-secondary">restaurant</span>
                 <h3 className="font-display" style={{ fontWeight: 700, fontSize: '1.125rem' }}>Composicao da Diaria</h3>
               </div>
-              {isAdmin && (
-                <button className="btn-ghost" onClick={() => setItemModal(true)} style={{ fontSize: '0.75rem' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>settings</span>Gerir Itens
-                </button>
-              )}
             </div>
             <form onSubmit={handleSubmit}>
               {loading && <p style={{ textAlign: 'center', color: '#a8a29e', padding: '1rem', fontSize: '0.875rem' }}>A carregar...</p>}
-              {!loading && activeItems.map(item => {
-                const stock = getStockInfo(item)
+              {!loading && feedProducts.map(p => {
+                const isLow = p.min_stock_alert > 0 && p.current_quantity <= p.min_stock_alert
                 return (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid var(--surface-mid)' }}>
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid var(--surface-mid)' }}>
                     <div className="icon-circle" style={{ background: 'var(--surface-mid)', flexShrink: 0 }}>
                       <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--on-surface-variant)' }}>inventory_2</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{item.name}</p>
+                      <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{p.name}</p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
-                        <p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>Unidade: {item.unit}</p>
-                        {stock && (
-                          <span style={{
-                            fontSize: '0.625rem',
-                            padding: '1px 6px',
-                            borderRadius: 4,
-                            fontWeight: 600,
-                            opacity: submitting ? 0.4 : 1,
-                            transition: 'opacity 0.2s',
-                            background: stock.current_quantity <= stock.min_stock_alert ? (stock.current_quantity === 0 ? '#fee2e2' : '#fef9c3') : '#dcfce7',
-                            color: stock.current_quantity <= stock.min_stock_alert ? (stock.current_quantity === 0 ? '#991b1b' : '#92400e') : '#166534',
-                          }}>
-                            {submitting ? 'A atualizar...' : `Stock: ${stock.current_quantity} ${stock.unit}`}
-                          </span>
-                        )}
+                        <p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>Unidade: {p.unit}</p>
+                        <span style={{
+                          fontSize: '0.625rem',
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          fontWeight: 600,
+                          opacity: submitting ? 0.4 : 1,
+                          transition: 'opacity 0.2s',
+                          background: isLow ? (p.current_quantity === 0 ? '#fee2e2' : '#fef9c3') : '#dcfce7',
+                          color: isLow ? (p.current_quantity === 0 ? '#991b1b' : '#92400e') : '#166534',
+                        }}>
+                          {submitting ? 'A atualizar...' : `Stock: ${p.current_quantity} ${p.unit}`}
+                        </span>
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button type="button" className="stepper-btn" onClick={() => { const c = parseFloat(quantities[item.id] || '0'); if (c > 0) setQuantities({ ...quantities, [item.id]: String(c - 1) }) }}>
+                      <button type="button" className="stepper-btn" onClick={() => { const c = parseFloat(quantities[p.id] || '0'); if (c > 0) setQuantities({ ...quantities, [p.id]: String(c - 1) }) }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
                       </button>
-                      <input type="number" min="0" step="0.5" value={quantities[item.id] || ''} onChange={e => setQuantities({ ...quantities, [item.id]: e.target.value })} placeholder="0"
+                      <input type="number" min="0" step="0.5" value={quantities[p.id] || ''} onChange={e => setQuantities({ ...quantities, [p.id]: e.target.value })} placeholder="0"
                         className="input-field" style={{ width: 64, textAlign: 'center', padding: '0.5rem' }} />
-                      <button type="button" className="stepper-btn" onClick={() => { const c = parseFloat(quantities[item.id] || '0'); setQuantities({ ...quantities, [item.id]: String(c + 1) }) }}>
+                      <button type="button" className="stepper-btn" onClick={() => { const c = parseFloat(quantities[p.id] || '0'); setQuantities({ ...quantities, [p.id]: String(c + 1) }) }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
                       </button>
                     </div>
-                    {dayTotals[item.id] ? (
+                    {dayTotals[p.id] ? (
                       <div style={{ textAlign: 'right', minWidth: 70 }}>
                         <p className="text-label" style={{ fontSize: '0.5625rem' }}>Total</p>
-                        <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{dayTotals[item.id]} {item.unit}</p>
+                        <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{dayTotals[p.id]} {p.unit}</p>
                       </div>
                     ) : <div style={{ minWidth: 70 }}></div>}
                   </div>
                 )
               })}
-              {!loading && activeItems.length === 0 && (
+              {!loading && feedProducts.length === 0 && (
                 <p style={{ textAlign: 'center', color: '#a8a29e', padding: '2rem', fontSize: '0.875rem' }}>
-                  Nenhum item configurado. {isAdmin ? 'Clique em "Gerir Itens" para adicionar produtos do stock.' : 'Contacte um administrador.'}
+                  Nenhum produto marcado como alimento. {isAdmin ? 'Va a Stock > Produtos e ative "Usar na Alimentacao Diaria".' : 'Contacte um administrador.'}
                 </p>
               )}
 
-              {/* Error banner */}
               {submitError && (
                 <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: '#fee2e2', borderRadius: 'var(--radius-sm)', color: '#991b1b', fontSize: '0.8125rem', fontWeight: 500, whiteSpace: 'pre-line' }}>
                   {submitError}
@@ -289,7 +213,6 @@ export default function Feed() {
           </div>
         </div>
 
-        {/* Sidebar */}
         <div style={{ position: 'sticky', top: '6rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="card" style={{ padding: '1.5rem' }}>
             <h4 className="font-display" style={{ fontWeight: 700, marginBottom: '1rem' }}>
@@ -297,90 +220,21 @@ export default function Feed() {
             </h4>
             {logs.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {logs.map(l => (
-                  <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-low)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-                    <div><p style={{ fontSize: '0.75rem', fontWeight: 600 }}>{l.feed_item?.name}</p><p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{l.quantity} {l.feed_item?.unit}</p></div>
-                    {isAdmin && <button onClick={() => handleDelete(l.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button>}
-                  </div>
-                ))}
+                {logs.map(l => {
+                  const name = l.product?.name ?? l.feed_item?.name ?? '—'
+                  const unit = l.product?.unit ?? l.feed_item?.unit ?? ''
+                  return (
+                    <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-low)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
+                      <div><p style={{ fontSize: '0.75rem', fontWeight: 600 }}>{name}</p><p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{l.quantity} {unit}</p></div>
+                      {isAdmin && <button onClick={() => handleDelete(l.id)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button>}
+                    </div>
+                  )
+                })}
               </div>
             ) : <p style={{ textAlign: 'center', color: '#a8a29e', padding: '1rem', fontSize: '0.875rem' }}>Sem registos para este dia</p>}
           </div>
         </div>
       </div>
-
-      {/* Modal: Manage feed items */}
-      <Modal open={itemModal} onClose={() => setItemModal(false)} title="Gerir Itens de Alimentacao">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Current items list */}
-          {feedItems.length > 0 && (
-            <div>
-              <label className="text-label" style={{ display: 'block', marginBottom: 8, marginLeft: 4 }}>Itens Atuais</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {feedItems.map(item => (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.75rem', background: item.active ? 'var(--surface-low)' : '#f5f5f4', borderRadius: 'var(--radius-sm)', opacity: item.active ? 1 : 0.5 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--on-surface-variant)' }}>inventory_2</span>
-                      <div>
-                        <p style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{item.name}</p>
-                        <p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{item.unit}{item.product_id ? ' · Ligado ao stock' : ''}</p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <button type="button" onClick={async () => {
-                        const err = await updateItem(item.id, { active: !item.active })
-                        if (err) alert('Erro: ' + err.message)
-                      }} title={item.active ? 'Desativar' : 'Ativar'} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: item.active ? 'var(--primary)' : '#a8a29e' }}>{item.active ? 'visibility' : 'visibility_off'}</span>
-                      </button>
-                      <button type="button" onClick={() => handleRemoveFeedItem(item)} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--error)' }}>delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Divider */}
-          {feedItems.length > 0 && availableProducts.length > 0 && (
-            <div style={{ borderTop: '1px solid var(--surface-mid)', paddingTop: '0.25rem' }} />
-          )}
-
-          {/* Add new item from stock */}
-          {availableProducts.length > 0 ? (
-            <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label className="text-label" style={{ display: 'block', marginLeft: 4 }}>Adicionar Produto do Stock</label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="input-field" required style={{ flex: 1 }}>
-                  <option value="">-- Escolha um produto --</option>
-                  {availableProducts.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.unit}) — Stock: {p.current_quantity}</option>
-                  ))}
-                </select>
-                <button type="submit" className="btn-primary" style={{ padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>Adicionar
-                </button>
-              </div>
-              <p style={{ fontSize: '0.6875rem', color: '#a8a29e', marginLeft: 4 }}>
-                Ao submeter um registo de alimentacao, o stock e automaticamente deduzido.
-              </p>
-            </form>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '1rem' }}>
-              <p style={{ fontSize: '0.8125rem', color: '#a8a29e' }}>
-                {products.filter(p => p.active).length === 0
-                  ? 'Nenhum produto registado no Stock.'
-                  : 'Todos os produtos do stock ja estao adicionados.'}
-              </p>
-              <p style={{ fontSize: '0.6875rem', color: '#a8a29e', marginTop: 4 }}>
-                Adicione novos produtos na pagina de Stock ou nas Definicoes.
-              </p>
-            </div>
-          )}
-        </div>
-      </Modal>
 
       <style>{`
         @media (max-width: 1023px) { .feed-grid { grid-template-columns: 1fr !important; } }

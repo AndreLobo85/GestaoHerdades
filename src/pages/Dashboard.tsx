@@ -236,7 +236,7 @@ export default function Dashboard() {
     const [actRes, fuelRes, feedRes, expensesRes, genExpRes] = await Promise.all([
       supabase.from('activities').select('*, employee:employees(*), activity_type:activity_types(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
       supabase.from('fuel_logs').select('*, vehicle:vehicles(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
-      supabase.from('feed_logs').select('*, feed_item:feed_items(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
+      supabase.from('feed_logs').select('*, feed_item:feed_items(*), product:products(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
       supabase.from('expenses').select('*, vehicle:vehicles(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
       supabase.from('general_expenses').select('*, category:expense_categories(*)').gte('date', dateFrom).lt('date', dateTo).order('date', { ascending: false }),
     ])
@@ -282,7 +282,7 @@ export default function Dashboard() {
     // Tab 3: Alimentacao
     XLSX.utils.book_append_sheet(wb, buildSheet('Alimentacao Animal', period,
       ['Data', 'Item', 'Quantidade', 'Unidade', 'Notas'],
-      feedData.map((f: any) => [formatDate(f.date), f.feed_item?.name ?? '', f.quantity, f.feed_item?.unit ?? '', f.notes ?? '']),
+      feedData.map((f: any) => [formatDate(f.date), f.product?.name ?? f.feed_item?.name ?? '', f.quantity, f.product?.unit ?? f.feed_item?.unit ?? '', f.notes ?? '']),
       [14, 26, 14, 12, 32], 2, themes.alimentacao
     ), 'Alimentacao')
 

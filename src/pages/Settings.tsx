@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/ui/Modal'
-import { useActivityTypes, useVehicles, useFeedItems, useProducts } from '../lib/store'
+import { useActivityTypes, useVehicles, useProducts } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import type { Vehicle, Profile, UserRole, RoleView } from '../types/database'
 
-type Tab = 'users' | 'roles' | 'activities' | 'vehicles' | 'feed' | 'products'
+type Tab = 'users' | 'roles' | 'activities' | 'vehicles' | 'products'
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('users')
@@ -13,7 +13,6 @@ export default function SettingsPage() {
   const [_usersLoading, setUsersLoading] = useState(true)
   const activityTypes = useActivityTypes()
   const vehicles = useVehicles()
-  const feedItems = useFeedItems()
   const productsStore = useProducts()
 
   const [roleViews, setRoleViews] = useState<RoleView[]>([])
@@ -44,7 +43,6 @@ export default function SettingsPage() {
     { id: 'roles' as Tab, label: 'Roles', icon: 'admin_panel_settings', count: 2, badge: 0 },
     { id: 'activities' as Tab, label: 'Atividades', icon: 'label', count: activityTypes.data.length, badge: 0 },
     { id: 'vehicles' as Tab, label: 'Veiculos', icon: 'agriculture', count: vehicles.data.length, badge: 0 },
-    { id: 'feed' as Tab, label: 'Alimentacao', icon: 'grass', count: feedItems.data.length, badge: 0 },
     { id: 'products' as Tab, label: 'Produtos', icon: 'inventory_2', count: productsStore.data.length, badge: 0 },
   ]
 
@@ -69,7 +67,7 @@ export default function SettingsPage() {
     fetchUsers()
   }
 
-  const _currentData = tab === 'users' ? users : tab === 'activities' ? activityTypes.data : tab === 'vehicles' ? vehicles.data : feedItems.data
+  const _currentData = tab === 'users' ? users : tab === 'activities' ? activityTypes.data : tab === 'vehicles' ? vehicles.data : productsStore.data
   void _currentData
 
   return (
@@ -304,26 +302,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Feed tab */}
-      {tab === 'feed' && (
-        <div className="card" style={{ overflow: 'hidden' }}>
-          {feedItems.data.map(item => (
-            <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', transition: 'background 0.15s' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#fafaf9')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div className="icon-circle" style={{ background: 'var(--secondary-container)' }}><span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--secondary-on)' }}>grass</span></div>
-                <div><p style={{ fontWeight: 600 }}>{item.name}</p><p style={{ fontSize: '0.75rem', color: '#a8a29e' }}>Unidade: {item.unit}</p></div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <button onClick={() => feedItems.update(item.id, { active: !item.active })} className={item.active ? 'badge-green' : 'badge-muted'} style={{ cursor: 'pointer', border: 'none' }}>{item.active ? 'Ativo' : 'Inativo'}</button>
-                <button onClick={() => feedItems.remove(item.id)} style={{ padding: 6, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: 16 }}>delete</span></button>
-              </div>
-            </div>
-          ))}
-          {feedItems.data.length === 0 && <EmptyMsg icon="grass" />}
-        </div>
-      )}
-
       {/* Products tab */}
       {tab === 'products' && (
         <div className="card" style={{ overflow: 'hidden' }}>
@@ -352,8 +330,7 @@ export default function SettingsPage() {
       {tab === 'users' && <AddUserModal open={modalOpen} onClose={() => setModalOpen(false)} onSaved={() => { setModalOpen(false); fetchUsers() }} />}
       {tab === 'activities' && <AddSimpleModal open={modalOpen} onClose={() => setModalOpen(false)} title="Nova Atividade" label="Nome" placeholder="Ex: Poda, Rega..." onSave={async n => { await activityTypes.insert({ name: n, active: true }); setModalOpen(false) }} />}
       {tab === 'vehicles' && <AddVehicleModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async v => { await vehicles.insert(v); setModalOpen(false) }} />}
-      {tab === 'feed' && <AddFeedItemModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async (n, u) => { await feedItems.insert({ name: n, unit: u, active: true, product_id: null }); setModalOpen(false) }} />}
-      {tab === 'products' && <AddProductModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async (name, unit, minAlert) => { await productsStore.insert({ name, unit, min_stock_alert: minAlert, current_quantity: 0, active: true } as any); setModalOpen(false) }} />}
+      {tab === 'products' && <AddProductModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={async (name, unit, minAlert) => { await productsStore.insert({ name, unit, min_stock_alert: minAlert, current_quantity: 0, active: true, is_feed: false } as any); setModalOpen(false) }} />}
     </div>
   )
 }
@@ -581,27 +558,6 @@ function AddVehicleModal({ open, onClose, onSave }: { open: boolean; onClose: ()
         </div>
         <div><label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Km Atuais</label>
           <input type="number" min="0" value={f.current_km} onChange={e => setF({ ...f, current_km: e.target.value })} placeholder="0" className="input-field" /></div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
-          <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
-          <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Guardar</button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
-function AddFeedItemModal({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (n: string, u: string) => void }) {
-  const [n, setN] = useState(''); const [u, setU] = useState('unidades')
-  return (
-    <Modal open={open} onClose={onClose} title="Novo Item Alimentacao">
-      <form onSubmit={e => { e.preventDefault(); onSave(n, u); setN(''); setU('unidades') }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div><label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Nome</label>
-          <input required value={n} onChange={e => setN(e.target.value)} placeholder="Ex: Fardos de alfafa" className="input-field" /></div>
-        <div><label className="text-label" style={{ display: 'block', marginBottom: 4, marginLeft: 4 }}>Unidade</label>
-          <select value={u} onChange={e => setU(e.target.value)} className="input-field">
-            <option value="unidades">Unidades</option><option value="kg">Kg</option><option value="sacos">Sacos</option>
-            <option value="fardos">Fardos</option><option value="bolas">Bolas</option><option value="litros">Litros</option>
-          </select></div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
           <button type="button" onClick={onClose} className="btn-ghost">Cancelar</button>
           <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.25rem' }}>Guardar</button>

@@ -166,12 +166,14 @@ export interface RoleView {
 export interface FeedLog {
   id: string
   date: string
-  feed_item_id: string
+  feed_item_id: string | null
+  product_id: string | null
   quantity: number
   notes: string
   created_at: string
   // joined
   feed_item?: FeedItem
+  product?: Product
 }
 
 export interface ExpenseCategory {
@@ -207,6 +209,7 @@ export interface Product {
   current_quantity: number
   min_stock_alert: number
   active: boolean
+  is_feed: boolean
   created_at: string
 }
 

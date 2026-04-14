@@ -148,13 +148,13 @@ function ProductsTab() {
   const { data: products, loading, insert, update, fetch: refresh } = useProducts()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState({ name: '', unit: 'unidades', min_stock_alert: '', current_quantity: '' })
+  const [form, setForm] = useState({ name: '', unit: 'unidades', min_stock_alert: '', current_quantity: '', is_feed: false })
 
-  const resetForm = () => { setForm({ name: '', unit: 'unidades', min_stock_alert: '', current_quantity: '' }); setEditingId(null) }
+  const resetForm = () => { setForm({ name: '', unit: 'unidades', min_stock_alert: '', current_quantity: '', is_feed: false }); setEditingId(null) }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const payload = { name: form.name.trim(), unit: form.unit.trim(), min_stock_alert: parseFloat(form.min_stock_alert) || 0, current_quantity: parseFloat(form.current_quantity) || 0, active: true }
+    const payload = { name: form.name.trim(), unit: form.unit.trim(), min_stock_alert: parseFloat(form.min_stock_alert) || 0, current_quantity: parseFloat(form.current_quantity) || 0, active: true, is_feed: form.is_feed }
     if (editingId) {
       await update(editingId, payload as any)
     } else {
@@ -164,7 +164,7 @@ function ProductsTab() {
   }
 
   const handleEdit = (p: Product) => {
-    setForm({ name: p.name, unit: p.unit, min_stock_alert: String(p.min_stock_alert), current_quantity: String(p.current_quantity) })
+    setForm({ name: p.name, unit: p.unit, min_stock_alert: String(p.min_stock_alert), current_quantity: String(p.current_quantity), is_feed: !!p.is_feed })
     setEditingId(p.id); setModalOpen(true)
   }
 
@@ -204,7 +204,10 @@ function ProductsTab() {
                 const isLow = p.active && p.min_stock_alert > 0 && p.current_quantity <= p.min_stock_alert
                 return (
                   <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
-                    <td style={{ fontWeight: 600, fontSize: '0.875rem' }}>{p.name}</td>
+                    <td style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                      {p.name}
+                      {p.is_feed && <span style={{ marginLeft: 6, fontSize: '0.625rem', padding: '1px 6px', borderRadius: 4, background: '#ecfccb', color: '#3a6843', fontWeight: 700 }}>🌾 Alimento</span>}
+                    </td>
                     <td style={{ fontSize: '0.8125rem', color: '#78716c' }}>{p.unit}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.875rem', color: isLow ? '#dc2626' : 'var(--on-surface)' }}>{p.current_quantity} {p.unit}</td>
                     <td style={{ textAlign: 'right', fontSize: '0.8125rem', color: '#a8a29e' }}>{p.min_stock_alert > 0 ? `${p.min_stock_alert} ${p.unit}` : '—'}</td>
@@ -249,10 +252,18 @@ function ProductsTab() {
               <input type="number" min="0" step="0.1" value={form.current_quantity} onChange={e => setForm({ ...form, current_quantity: e.target.value })} placeholder="0" className="input-field" />
             </div>
           </div>
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716c' }}>Stock Minimo (alerta)</label>
             <input type="number" min="0" step="0.1" value={form.min_stock_alert} onChange={e => setForm({ ...form, min_stock_alert: e.target.value })} placeholder="0 (sem alerta)" className="input-field" />
             <p style={{ fontSize: '0.625rem', color: '#a8a29e', marginTop: '0.25rem' }}>Recebera um alerta quando o stock ficar abaixo deste valor.</p>
+          </div>
+          <div style={{ marginBottom: '1.5rem', padding: '0.875rem 1rem', background: form.is_feed ? '#f0fdf4' : '#fafafa', borderRadius: '0.875rem', border: `1px solid ${form.is_feed ? '#bbf7d0' : '#f0eeec'}`, display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer' }} onClick={() => setForm({ ...form, is_feed: !form.is_feed })}>
+            <input type="checkbox" checked={form.is_feed} onChange={e => setForm({ ...form, is_feed: e.target.checked })} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: form.is_feed ? '#3a6843' : '#a8a29e' }}>grass</span>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: form.is_feed ? '#3a6843' : 'var(--on-surface)' }}>Usar na Alimentacao Diaria</p>
+              <p style={{ fontSize: '0.6875rem', color: '#78716c' }}>Aparece na pagina de Alimentacao para registo de consumos.</p>
+            </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
             <button type="button" onClick={() => { setModalOpen(false); resetForm() }} style={{ padding: '0.875rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, borderRadius: '0.875rem', border: 'none', background: '#f2f4f3', color: '#44483c', cursor: 'pointer' }}>Cancelar</button>
