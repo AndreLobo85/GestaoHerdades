@@ -2,11 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/ui/Modal'
 import { useActivityTypes, useVehicles } from '../lib/store'
 import { supabase } from '../lib/supabase'
-import { useTenant } from '../contexts/TenantContext'
-import RolesManager from '../components/RolesManager'
 import type { Vehicle, Profile, UserRole } from '../types/database'
 
-type Tab = 'users' | 'roles' | 'activities' | 'vehicles'
+type Tab = 'users' | 'activities' | 'vehicles'
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('users')
@@ -15,7 +13,6 @@ export default function SettingsPage() {
   const [_usersLoading, setUsersLoading] = useState(true)
   const activityTypes = useActivityTypes()
   const vehicles = useVehicles()
-  const { currentTenant } = useTenant()
 
   const fetchUsers = useCallback(async () => {
     setUsersLoading(true)
@@ -30,7 +27,6 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'users' as Tab, label: 'Utilizadores', icon: 'group', count: users.length, badge: pendingCount },
-    { id: 'roles' as Tab, label: 'Roles', icon: 'admin_panel_settings', count: 2, badge: 0 },
     { id: 'activities' as Tab, label: 'Atividades', icon: 'label', count: activityTypes.data.length, badge: 0 },
     { id: 'vehicles' as Tab, label: 'Veiculos', icon: 'agriculture', count: vehicles.data.length, badge: 0 },
   ]
@@ -83,21 +79,13 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {/* Add button — hidden on Roles tab (admin/utilizador fixed) */}
-      {tab !== 'roles' && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-          <button className="btn-secondary" onClick={() => setModalOpen(true)}>
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-            Adicionar
-          </button>
-        </div>
-      )}
-      {tab === 'roles' && (
-        <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: '#92400e' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>info</span>
-          Os roles base (Admin e Utilizador) são fixos. As permissões por módulo gerem-se no <strong>Super-Admin</strong> (ativar/desativar módulos por herdade).
-        </div>
-      )}
+      {/* Add button */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+        <button className="btn-secondary" onClick={() => setModalOpen(true)}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+          Adicionar
+        </button>
+      </div>
 
       {/* Users tab */}
       {tab === 'users' && (
@@ -202,9 +190,6 @@ export default function SettingsPage() {
           )}
         </div>
       )}
-
-      {/* Roles tab — dynamic per-tenant roles */}
-      {tab === 'roles' && currentTenant && <RolesManager tenantId={currentTenant.id} />}
 
       {/* Activities tab */}
       {tab === 'activities' && (

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useTenant } from '../contexts/TenantContext'
 import Modal from '../components/ui/Modal'
 import CreateUserModal from '../components/CreateUserModal'
+import RolesManager from '../components/RolesManager'
 
 interface TenantRow {
   id: string
@@ -241,6 +242,12 @@ function TenantDetail() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Roles */}
+      <div className="card" style={{ padding: '1.25rem', marginTop: '1.5rem' }}>
+        <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Roles e Permissões</h3>
+        <RolesManager tenantId={id} />
       </div>
 
       {/* Users */}
