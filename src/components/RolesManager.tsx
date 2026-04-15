@@ -24,8 +24,6 @@ const MODULES = [
   { key: 'feed', label: 'Alimentação' },
   { key: 'stock', label: 'Stock' },
   { key: 'expenses', label: 'Despesas' },
-  { key: 'vehicles', label: 'Veículos' },
-  { key: 'employees', label: 'Funcionários' },
 ]
 const ACTIONS = [
   { key: 'view', label: 'Ver' },
