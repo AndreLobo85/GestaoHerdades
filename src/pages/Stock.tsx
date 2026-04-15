@@ -55,18 +55,24 @@ function StockDashboard() {
   const { data: products, loading } = useProducts()
   const activeProducts = products.filter(p => p.active)
   const lowStock = activeProducts.filter(p => p.min_stock_alert > 0 && p.current_quantity <= p.min_stock_alert)
-  const totalValue = activeProducts.reduce((s, p) => s + p.current_quantity, 0)
+
+  // Aggregate quantities by unit (kg, fardos, litros...) so we don't mix unlike items
+  const totalsByUnit = activeProducts.reduce<Record<string, number>>((acc, p) => {
+    const u = p.unit || 'unidades'
+    acc[u] = (acc[u] || 0) + p.current_quantity
+    return acc
+  }, {})
+  const unitEntries = Object.entries(totalsByUnit).sort(([a],[b]) => a.localeCompare(b))
 
   if (loading) return <div className="card" style={{ padding: '3rem', textAlign: 'center' }}><p style={{ color: '#a8a29e' }}>A carregar...</p></div>
 
   return (
     <div>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }} className="stock-stats">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1rem' }} className="stock-stats">
         {[
           { label: 'Produtos Ativos', value: String(activeProducts.length), icon: 'category', color: '#3a6843', bg: '#ecfccb' },
           { label: 'Alertas de Stock', value: String(lowStock.length), icon: 'warning', color: lowStock.length > 0 ? '#dc2626' : '#3a6843', bg: lowStock.length > 0 ? '#fef2f2' : '#ecfccb' },
-          { label: 'Items em Stock', value: totalValue.toFixed(0), icon: 'inventory_2', color: '#793c00', bg: '#fff7ed' },
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: '1.25rem', display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
             <div style={{ width: 36, height: 36, borderRadius: '0.625rem', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -79,6 +85,21 @@ function StockDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Totals per unit */}
+      {unitEntries.length > 0 && (
+        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#a8a29e', marginBottom: '0.75rem' }}>Totais em Stock</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+            {unitEntries.map(([unit, qty]) => (
+              <div key={unit} style={{ background: '#fff7ed', borderRadius: '0.625rem', padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#a8a29e' }}>{unit}</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: '#793c00', lineHeight: 1.1, marginTop: 2 }}>{Number.isInteger(qty) ? qty : qty.toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Low stock alerts */}
       {lowStock.length > 0 && (
