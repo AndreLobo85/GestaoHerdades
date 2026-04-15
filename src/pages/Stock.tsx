@@ -74,6 +74,7 @@ function StockDashboard() {
         background: 'linear-gradient(135deg, #2d4a1f 0%, #365314 55%, #3f6212 100%)',
         borderRadius: '1.25rem', padding: '1.75rem 2rem', marginBottom: '1.75rem',
         boxShadow: '0 10px 40px -10px rgba(54, 83, 20, 0.35)',
+        maxWidth: 860, width: 'fit-content', minWidth: 'min(860px, 100%)',
       }}>
         {/* Decorative texture */}
         <div aria-hidden style={{
