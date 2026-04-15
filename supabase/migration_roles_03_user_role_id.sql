@@ -122,7 +122,8 @@ $func_assign$;
 grant execute on function public.admin_assign_user(uuid, text, text, uuid) to authenticated;
 
 -- 4. admin_list_tenant_users now returns role name from tenant_roles
-create or replace function public.admin_list_tenant_users(p_tenant_id uuid)
+drop function if exists public.admin_list_tenant_users(uuid);
+create function public.admin_list_tenant_users(p_tenant_id uuid)
 returns table (
   user_id uuid,
   email text,
