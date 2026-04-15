@@ -26,21 +26,18 @@ const allMobileItems = [
 ]
 
 export default function Layout() {
-  const { isAdmin, profile, allowedViews, signOut } = useAuth()
-  const { currentTenant, availableTenants, modules, isPlatformAdmin } = useTenant()
+  const { isAdmin, profile, signOut } = useAuth()
+  const { currentTenant, availableTenants, modules, isPlatformAdmin, can, permissions } = useTenant()
   const [profileOpen, setProfileOpen] = useState(false)
   const [tenantMenuOpen, setTenantMenuOpen] = useState(false)
 
   const canSee = (item: { key: string; module?: string }) => {
-    // Definicoes only for admins
-    if (item.key === 'definicoes') return isAdmin
-    // If item maps to a tenant module and modules are loaded: respect the flag
-    if (item.module && Object.keys(modules).length > 0) {
-      if (modules[item.module] === false) return false
-    }
-    // Legacy fallback (role_views)
-    if (allowedViews.length > 0) return allowedViews.includes(item.key)
-    // Default: users see non-admin pages
+    // Tenant settings page: needs explicit permission
+    if (item.key === 'definicoes') return can('tenant', 'settings') || isAdmin
+    // Module disabled at tenant level → hide
+    if (item.module && Object.keys(modules).length > 0 && modules[item.module] === false) return false
+    // Use permissions when loaded; fall back to legacy admin check otherwise
+    if (item.module && permissions.size > 0) return can(item.module, 'view')
     return isAdmin || !['despesas', 'definicoes'].includes(item.key)
   }
   const sideItems = allSideItems.filter(canSee)

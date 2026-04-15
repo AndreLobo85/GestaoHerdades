@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from './ui/Modal'
 import { supabase } from '../lib/supabase'
 
@@ -10,13 +10,31 @@ interface Props {
   tenantName: string
 }
 
+interface RoleOpt { id: string; key: string; name: string; is_system: boolean }
+
 export default function CreateUserModal({ open, onClose, onSaved, tenantId, tenantName }: Props) {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'admin' | 'utilizador'>('utilizador')
+  const [roles, setRoles] = useState<RoleOpt[]>([])
+  const [roleId, setRoleId] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    ;(async () => {
+      const { data } = await (supabase.rpc as any)('admin_list_tenant_roles', { p_tenant_id: tenantId })
+      const opts = (data as RoleOpt[] | null) ?? []
+      setRoles(opts)
+      // Default to utilizador if exists
+      const def = opts.find(r => r.key === 'utilizador') ?? opts[0]
+      if (def) setRoleId(def.id)
+    })()
+  }, [open, tenantId])
+
+  const selectedRole = roles.find(r => r.id === roleId)
+  const isAdminRole = selectedRole?.key === 'admin'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,10 +61,10 @@ export default function CreateUserModal({ open, onClose, onSaved, tenantId, tena
       }
       // Wait for profile trigger
       await new Promise(r => setTimeout(r, 1500))
-      await supabase.from('profiles').update({ full_name: fullName, email, status: 'active', role } as never).eq('id', userId)
+      await supabase.from('profiles').update({ full_name: fullName, email, status: 'active' } as never).eq('id', userId)
 
       // Associate to tenant via RPC (works for tenant admin + platform admin)
-      const { error: rpcErr } = await (supabase.rpc as any)('tenant_add_user', { p_tenant_id: tenantId, p_email: email, p_role: role })
+      const { error: rpcErr } = await (supabase.rpc as any)('tenant_add_user', { p_tenant_id: tenantId, p_email: email, p_role: selectedRole?.key ?? 'utilizador', p_role_id: roleId || null })
       if (rpcErr) {
         setError('Utilizador criado, mas falhou associação à herdade: ' + rpcErr.message)
         setSaving(false); return
@@ -56,7 +74,7 @@ export default function CreateUserModal({ open, onClose, onSaved, tenantId, tena
       setSaving(false); return
     }
 
-    setFullName(''); setEmail(''); setPassword(''); setRole('utilizador')
+    setFullName(''); setEmail(''); setPassword('')
     setSaving(false); onSaved()
   }
 
@@ -72,14 +90,14 @@ export default function CreateUserModal({ open, onClose, onSaved, tenantId, tena
         )}
 
         <div style={{ background: 'linear-gradient(135deg, #f2f4f3 0%, #e6e9e8 100%)', borderRadius: '1.25rem', padding: '1.25rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: fullName ? (role === 'admin' ? '#793c00' : '#365314') : '#a8a29e', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem' }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: fullName ? (isAdminRole ? '#793c00' : '#365314') : '#a8a29e', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem' }}>
             {initials || <span className="material-symbols-outlined">person_add</span>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontWeight: 800, fontSize: '0.9375rem' }}>{fullName || 'Novo Utilizador'}</p>
             <p style={{ fontSize: '0.75rem', color: '#78716c' }}>{email || 'email@exemplo.com'}</p>
-            <span style={{ display: 'inline-block', marginTop: '0.25rem', fontSize: '0.625rem', fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: role === 'admin' ? '#fff7ed' : '#ecfccb', color: role === 'admin' ? '#793c00' : '#365314' }}>
-              {role === 'admin' ? 'ADMIN' : 'UTILIZADOR'}
+            <span style={{ display: 'inline-block', marginTop: '0.25rem', fontSize: '0.625rem', fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: isAdminRole ? '#fff7ed' : '#ecfccb', color: isAdminRole ? '#793c00' : '#365314' }}>
+              {(selectedRole?.name ?? '—').toUpperCase()}
             </span>
           </div>
         </div>
@@ -91,9 +109,8 @@ export default function CreateUserModal({ open, onClose, onSaved, tenantId, tena
           </div>
           <div>
             <label className="text-label">Role</label>
-            <select value={role} onChange={e => setRole(e.target.value as any)} className="input-field">
-              <option value="utilizador">Utilizador</option>
-              <option value="admin">Admin</option>
+            <select required value={roleId} onChange={e => setRoleId(e.target.value)} className="input-field">
+              {roles.map(r => <option key={r.id} value={r.id}>{r.name}{r.is_system ? '' : ' (custom)'}</option>)}
             </select>
           </div>
         </div>
