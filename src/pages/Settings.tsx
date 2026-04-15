@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/ui/Modal'
 import { useActivityTypes, useVehicles } from '../lib/store'
 import { supabase } from '../lib/supabase'
-import type { Vehicle, Profile, UserRole, RoleView } from '../types/database'
+import { useTenant } from '../contexts/TenantContext'
+import RolesManager from '../components/RolesManager'
+import type { Vehicle, Profile, UserRole } from '../types/database'
 
 type Tab = 'users' | 'roles' | 'activities' | 'vehicles'
 
@@ -13,8 +15,7 @@ export default function SettingsPage() {
   const [_usersLoading, setUsersLoading] = useState(true)
   const activityTypes = useActivityTypes()
   const vehicles = useVehicles()
-
-  const [roleViews, setRoleViews] = useState<RoleView[]>([])
+  const { currentTenant } = useTenant()
 
   const fetchUsers = useCallback(async () => {
     setUsersLoading(true)
@@ -23,19 +24,9 @@ export default function SettingsPage() {
     setUsersLoading(false)
   }, [])
 
-  const fetchRoleViews = useCallback(async () => {
-    const { data } = await supabase.from('role_views').select('*').order('view_key', { ascending: true })
-    setRoleViews((data as RoleView[]) ?? [])
-  }, [])
-
-  useEffect(() => { fetchUsers(); fetchRoleViews() }, [fetchUsers, fetchRoleViews])
+  useEffect(() => { fetchUsers() }, [fetchUsers])
 
   const pendingCount = users.filter(u => u.status === 'pending').length
-
-  const handleToggleView = async (id: string, enabled: boolean) => {
-    await supabase.from('role_views').update({ enabled } as never).eq('id', id)
-    fetchRoleViews()
-  }
 
   const tabs = [
     { id: 'users' as Tab, label: 'Utilizadores', icon: 'group', count: users.length, badge: pendingCount },
@@ -212,60 +203,8 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Roles tab */}
-      {tab === 'roles' && (
-        <div>
-          {(['admin', 'utilizador'] as const).map(role => {
-            const views = roleViews.filter(v => v.role === role)
-            return (
-              <div key={role} style={{ marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: role === 'admin' ? 'var(--primary)' : 'var(--secondary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{role === 'admin' ? 'shield_person' : 'person'}</span>
-                  </div>
-                  <div>
-                    <h3 className="font-display" style={{ fontWeight: 700, fontSize: '1rem', textTransform: 'capitalize' }}>{role}</h3>
-                    <p style={{ fontSize: '0.6875rem', color: '#a8a29e' }}>{views.filter(v => v.enabled).length} de {views.length} views ativas</p>
-                  </div>
-                </div>
-                <div className="card" style={{ overflow: 'hidden' }}>
-                  {views.length > 0 ? views.map(v => (
-                    <div key={v.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', transition: 'background 0.15s' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#fafaf9')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div className="icon-circle" style={{ background: v.enabled ? 'var(--secondary-container)' : 'var(--surface-high)' }}>
-                          <span className="material-symbols-outlined" style={{ fontSize: 18, color: v.enabled ? 'var(--secondary-on)' : '#a8a29e' }}>{v.view_icon}</span>
-                        </div>
-                        <div>
-                          <p style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{v.view_label}</p>
-                          <p style={{ fontSize: '0.6875rem', color: '#a8a29e' }}>/{v.view_key}</p>
-                        </div>
-                      </div>
-                      <button onClick={() => handleToggleView(v.id, !v.enabled)}
-                        style={{
-                          width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
-                          background: v.enabled ? 'var(--secondary)' : '#d6d3d1',
-                          position: 'relative', transition: 'background 0.2s',
-                        }}>
-                        <div style={{
-                          width: 22, height: 22, borderRadius: '50%', background: 'white',
-                          position: 'absolute', top: 3,
-                          left: v.enabled ? 23 : 3,
-                          transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                        }} />
-                      </button>
-                    </div>
-                  )) : (
-                    <p style={{ padding: '2rem', textAlign: 'center', color: '#a8a29e', fontSize: '0.875rem' }}>
-                      Sem permissoes configuradas. Corra a migration SQL.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {/* Roles tab — dynamic per-tenant roles */}
+      {tab === 'roles' && currentTenant && <RolesManager tenantId={currentTenant.id} />}
 
       {/* Activities tab */}
       {tab === 'activities' && (

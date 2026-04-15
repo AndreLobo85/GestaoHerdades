@@ -18,6 +18,8 @@ interface TenantContextType {
   availableTenants: TenantSummary[]
   modules: Record<string, boolean>
   isPlatformAdmin: boolean
+  permissions: Set<string>            // entries like "activities.view"
+  can: (module: string, action: string) => boolean
   switchTenant: (tenantId: string) => Promise<void>
   refresh: () => Promise<void>
 }
@@ -29,6 +31,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [availableTenants, setAvailableTenants] = useState<TenantSummary[]>([])
   const [modules, setModules] = useState<Record<string, boolean>>({})
+  const [permissions, setPermissions] = useState<Set<string>>(new Set())
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
 
   const parseClaims = useCallback((): { tenant_id: string | null; is_platform_admin: boolean } => {
@@ -56,17 +59,23 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setAvailableTenants((tenants as TenantSummary[] | null) ?? [])
 
     if (claims.tenant_id) {
-      const { data: mods } = await supabase
-        .from('tenant_modules')
-        .select('module_key, enabled')
-        .eq('tenant_id', claims.tenant_id)
+      const [{ data: mods }, { data: perms }] = await Promise.all([
+        supabase.from('tenant_modules').select('module_key, enabled').eq('tenant_id', claims.tenant_id),
+        (supabase.rpc as any)('get_my_permissions'),
+      ])
       const map: Record<string, boolean> = {}
       for (const m of (mods ?? []) as { module_key: string; enabled: boolean }[]) {
         map[m.module_key] = m.enabled
       }
       setModules(map)
+      const set = new Set<string>()
+      for (const p of (perms ?? []) as { module_key: string; action: string; allowed: boolean }[]) {
+        if (p.allowed) set.add(`${p.module_key}.${p.action}`)
+      }
+      setPermissions(set)
     } else {
       setModules({})
+      setPermissions(new Set())
     }
     setLoading(false)
   }, [session?.user, parseClaims])
@@ -84,6 +93,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const claims = parseClaims()
   const currentTenant = availableTenants.find(t => t.id === claims.tenant_id) ?? null
 
+  const can = (module: string, action: string) =>
+    isPlatformAdmin || permissions.has(`${module}.${action}`)
+
   return (
     <TenantContext.Provider value={{
       loading,
@@ -91,6 +103,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       availableTenants,
       modules,
       isPlatformAdmin,
+      permissions,
+      can,
       switchTenant,
       refresh: fetchAll,
     }}>
