@@ -92,13 +92,21 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {/* Add button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-        <button className="btn-secondary" onClick={() => setModalOpen(true)}>
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-          Adicionar
-        </button>
-      </div>
+      {/* Add button — hidden on Roles tab (admin/utilizador fixed) */}
+      {tab !== 'roles' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+          <button className="btn-secondary" onClick={() => setModalOpen(true)}>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+            Adicionar
+          </button>
+        </div>
+      )}
+      {tab === 'roles' && (
+        <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: '#92400e' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>info</span>
+          Os roles base (Admin e Utilizador) são fixos. As permissões por módulo gerem-se no <strong>Super-Admin</strong> (ativar/desativar módulos por herdade).
+        </div>
+      )}
 
       {/* Users tab */}
       {tab === 'users' && (
