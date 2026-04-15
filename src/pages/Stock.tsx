@@ -108,16 +108,28 @@ function StockDashboard() {
             </div>
           </div>
 
-          {/* Right: totals per unit as stacked chips */}
-          {unitEntries.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 180 }} className="hero-totals">
-              <p style={{ fontSize: '0.625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(236,252,203,0.65)', marginBottom: '0.125rem' }}>Totais em Stock</p>
-              {unitEntries.map(([unit, qty]) => (
-                <div key={unit} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.08)', borderRadius: '0.625rem', backdropFilter: 'blur(4px)' }}>
-                  <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(236,252,203,0.75)', textTransform: 'lowercase' }}>{unit}</span>
-                  <span style={{ fontSize: '1.125rem', fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: '#fff', letterSpacing: '-0.02em' }}>{Number.isInteger(qty) ? qty : qty.toFixed(1)}</span>
-                </div>
-              ))}
+          {/* Right: per-product chips (falls back to per-unit aggregates when many products) */}
+          {activeProducts.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 220 }} className="hero-totals">
+              <p style={{ fontSize: '0.625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(236,252,203,0.65)', marginBottom: '0.125rem' }}>
+                {activeProducts.length <= 6 ? 'Stock por Produto' : 'Totais em Stock'}
+              </p>
+              {activeProducts.length <= 6
+                ? [...activeProducts].sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.08)', borderRadius: '0.625rem', backdropFilter: 'blur(4px)' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.92)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: '#fff', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                        {Number.isInteger(p.current_quantity) ? p.current_quantity : p.current_quantity.toFixed(1)} <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'rgba(236,252,203,0.65)', textTransform: 'lowercase' }}>{p.unit}</span>
+                      </span>
+                    </div>
+                  ))
+                : unitEntries.map(([unit, qty]) => (
+                    <div key={unit} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.08)', borderRadius: '0.625rem', backdropFilter: 'blur(4px)' }}>
+                      <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(236,252,203,0.75)', textTransform: 'lowercase' }}>{unit}</span>
+                      <span style={{ fontSize: '1.125rem', fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: '#fff', letterSpacing: '-0.02em' }}>{Number.isInteger(qty) ? qty : qty.toFixed(1)}</span>
+                    </div>
+                  ))
+              }
             </div>
           )}
         </div>
