@@ -67,66 +67,85 @@ function StockDashboard() {
   if (loading) return <div className="card" style={{ padding: '3rem', textAlign: 'center' }}><p style={{ color: '#a8a29e' }}>A carregar...</p></div>
 
   return (
-    <div>
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1rem' }} className="stock-stats">
-        {[
-          { label: 'Produtos Ativos', value: String(activeProducts.length), icon: 'category', color: '#3a6843', bg: '#ecfccb' },
-          { label: 'Alertas de Stock', value: String(lowStock.length), icon: 'warning', color: lowStock.length > 0 ? '#dc2626' : '#3a6843', bg: lowStock.length > 0 ? '#fef2f2' : '#ecfccb' },
-        ].map(s => (
-          <div key={s.label} className="card" style={{ padding: '1.25rem', display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
-            <div style={{ width: 36, height: 36, borderRadius: '0.625rem', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18, color: s.color }}>{s.icon}</span>
-            </div>
+    <div className="stock-dash">
+      {/* Hero panel — unified overview */}
+      <div style={{
+        position: 'relative', overflow: 'hidden',
+        background: 'linear-gradient(135deg, #2d4a1f 0%, #365314 55%, #3f6212 100%)',
+        borderRadius: '1.25rem', padding: '1.75rem 2rem', marginBottom: '1.75rem',
+        boxShadow: '0 10px 40px -10px rgba(54, 83, 20, 0.35)',
+      }}>
+        {/* Decorative texture */}
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.08,
+          backgroundImage: 'radial-gradient(circle at 20% 20%, #fff 1px, transparent 1px), radial-gradient(circle at 80% 60%, #fff 1px, transparent 1px)',
+          backgroundSize: '32px 32px, 48px 48px',
+        }} />
+        <div aria-hidden style={{
+          position: 'absolute', right: -40, top: -40, width: 240, height: 240, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(236,252,203,0.25) 0%, transparent 70%)',
+        }} />
+
+        <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '2rem', alignItems: 'center' }} className="hero-grid">
+          {/* Left: big KPI numbers */}
+          <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
             <div>
-              <p style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#a8a29e', marginBottom: '0.25rem' }}>{s.label}</p>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: s.color, lineHeight: 1.1 }}>{s.value}</h3>
+              <p style={{ fontSize: '0.625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(236,252,203,0.65)', marginBottom: '0.375rem' }}>Produtos</p>
+              <h2 style={{ fontSize: '3rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: '#fff', lineHeight: 0.95, letterSpacing: '-0.04em' }}>{activeProducts.length}</h2>
+              <p style={{ fontSize: '0.6875rem', color: 'rgba(236,252,203,0.55)', marginTop: '0.25rem' }}>ativos no catálogo</p>
+            </div>
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(236,252,203,0.15)' }} />
+            <div>
+              <p style={{ fontSize: '0.625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: lowStock.length > 0 ? '#fecaca' : 'rgba(236,252,203,0.65)', marginBottom: '0.375rem' }}>Alertas</p>
+              <h2 style={{ fontSize: '3rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: lowStock.length > 0 ? '#fca5a5' : '#fff', lineHeight: 0.95, letterSpacing: '-0.04em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {lowStock.length}
+                {lowStock.length > 0 && <span className="material-symbols-outlined" style={{ fontSize: 28, color: '#fca5a5' }}>warning</span>}
+              </h2>
+              <p style={{ fontSize: '0.6875rem', color: lowStock.length > 0 ? '#fecaca' : 'rgba(236,252,203,0.55)', marginTop: '0.25rem' }}>
+                {lowStock.length === 0 ? 'tudo dentro dos mínimos' : 'produtos abaixo do mínimo'}
+              </p>
             </div>
           </div>
-        ))}
+
+          {/* Right: totals per unit as stacked chips */}
+          {unitEntries.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 180 }} className="hero-totals">
+              <p style={{ fontSize: '0.625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(236,252,203,0.65)', marginBottom: '0.125rem' }}>Totais em Stock</p>
+              {unitEntries.map(([unit, qty]) => (
+                <div key={unit} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.08)', borderRadius: '0.625rem', backdropFilter: 'blur(4px)' }}>
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(236,252,203,0.75)', textTransform: 'lowercase' }}>{unit}</span>
+                  <span style={{ fontSize: '1.125rem', fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: '#fff', letterSpacing: '-0.02em' }}>{Number.isInteger(qty) ? qty : qty.toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Totals per unit */}
-      {unitEntries.length > 0 && (
-        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-          <p style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#a8a29e', marginBottom: '0.75rem' }}>Totais em Stock</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
-            {unitEntries.map(([unit, qty]) => (
-              <div key={unit} style={{ background: '#fff7ed', borderRadius: '0.625rem', padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#a8a29e' }}>{unit}</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: '#793c00', lineHeight: 1.1, marginTop: 2 }}>{Number.isInteger(qty) ? qty : qty.toFixed(1)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Low stock alerts */}
+      {/* Low stock callout */}
       {lowStock.length > 0 && (
-        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem', borderLeft: '4px solid #dc2626' }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#dc2626' }}>warning</span>
-            Alertas de Stock Baixo
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#dc2626' }}>priority_high</span>
+            <h3 style={{ fontSize: '0.8125rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Reposição urgente</h3>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {lowStock.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fef2f2', padding: '0.625rem 0.875rem', borderRadius: '0.625rem' }}>
-                <div>
-                  <p style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{p.name}</p>
-                  <p style={{ fontSize: '0.6875rem', color: '#dc2626' }}>Minimo: {p.min_stock_alert} {p.unit}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '1.125rem', fontWeight: 800, color: '#dc2626' }}>{p.current_quantity}</p>
-                  <p style={{ fontSize: '0.625rem', color: '#a8a29e' }}>{p.unit}</p>
-                </div>
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.375rem 0.75rem', borderRadius: 999, border: '1px solid #fecaca' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#991b1b' }}>{p.name}</span>
+                <span style={{ fontSize: '0.6875rem', color: '#dc2626', fontWeight: 600 }}>{p.current_quantity}/{p.min_stock_alert} {p.unit}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* All products grid */}
-      <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem' }}>Niveis de Stock</h3>
+      {/* Product levels — editorial grid */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
+        <h3 style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#78716c' }}>Níveis de Stock</h3>
+        <p style={{ fontSize: '0.6875rem', color: '#a8a29e' }}>{activeProducts.length} produto{activeProducts.length !== 1 ? 's' : ''}</p>
+      </div>
+
       {activeProducts.length === 0 ? (
         <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
           <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#d6d3d1' }}>inventory_2</span>
@@ -134,32 +153,50 @@ function StockDashboard() {
           <p style={{ fontSize: '0.875rem', color: '#a8a29e' }}>Adicione produtos no tab "Produtos".</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.875rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
           {activeProducts.map(p => {
             const isLow = p.min_stock_alert > 0 && p.current_quantity <= p.min_stock_alert
-            const pct = p.min_stock_alert > 0 ? Math.min(100, (p.current_quantity / (p.min_stock_alert * 3)) * 100) : 50
+            const isZero = p.current_quantity === 0
+            const pct = p.min_stock_alert > 0 ? Math.min(100, (p.current_quantity / (p.min_stock_alert * 3)) * 100) : 65
+            const barColor = isZero ? '#dc2626' : isLow ? '#f59e0b' : '#3a6843'
             return (
-              <div key={p.id} className="card" style={{ padding: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <p style={{ fontSize: '0.8125rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{p.name}</p>
-                  {isLow && <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#dc2626', flexShrink: 0 }}>warning</span>}
-                </div>
-                <h4 style={{ fontSize: '1.375rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: isLow ? '#dc2626' : 'var(--on-surface)' }}>
-                  {p.current_quantity} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#a8a29e' }}>{p.unit}</span>
-                </h4>
-                <div style={{ height: 4, borderRadius: 2, background: '#f0eeec', overflow: 'hidden', marginTop: '0.5rem' }}>
-                  <div style={{ height: '100%', borderRadius: 2, background: isLow ? '#dc2626' : '#3a6843', width: `${pct}%`, transition: 'width 0.3s' }} />
-                </div>
-                {p.min_stock_alert > 0 && (
-                  <p style={{ fontSize: '0.5625rem', color: '#a8a29e', marginTop: '0.25rem' }}>Min: {p.min_stock_alert} {p.unit}</p>
+              <div key={p.id} className="card stock-level-card" style={{ padding: '1.125rem', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default' }}>
+                {isLow && (
+                  <span style={{ position: 'absolute', top: 12, right: 12, fontSize: '0.5625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 7px', borderRadius: 999, background: isZero ? '#fee2e2' : '#fef3c7', color: isZero ? '#991b1b' : '#92400e' }}>
+                    {isZero ? 'Esgotado' : 'Baixo'}
+                  </span>
                 )}
+                {p.is_feed && (
+                  <span style={{ position: 'absolute', top: 12, left: 12, fontSize: '0.5625rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#ecfccb', color: '#3a6843' }}>🌾</span>
+                )}
+                <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--on-surface)', marginTop: p.is_feed ? '1rem' : 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.375rem', marginTop: '0.5rem' }}>
+                  <h4 style={{ fontSize: '2rem', fontWeight: 900, fontFamily: "'Manrope', sans-serif", color: isZero ? '#dc2626' : 'var(--on-surface)', lineHeight: 1, letterSpacing: '-0.03em' }}>
+                    {Number.isInteger(p.current_quantity) ? p.current_quantity : p.current_quantity.toFixed(1)}
+                  </h4>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#a8a29e', textTransform: 'lowercase' }}>{p.unit}</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: '#f5f4f2', overflow: 'hidden', marginTop: '0.875rem' }}>
+                  <div style={{ height: '100%', borderRadius: 3, background: `linear-gradient(90deg, ${barColor}, ${barColor}dd)`, width: `${pct}%`, transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)' }} />
+                </div>
+                <p style={{ fontSize: '0.625rem', color: '#a8a29e', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                  {p.min_stock_alert > 0
+                    ? <><span>mínimo</span><span style={{ fontWeight: 600, color: '#78716c' }}>{p.min_stock_alert} {p.unit}</span></>
+                    : <span>sem alerta definido</span>}
+                </p>
               </div>
             )
           })}
         </div>
       )}
 
-      <style>{`@media (max-width: 767px) { .stock-stats { grid-template-columns: 1fr !important; } }`}</style>
+      <style>{`
+        .stock-level-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(0,0,0,0.12); }
+        @media (max-width: 899px) {
+          .hero-grid { grid-template-columns: 1fr !important; }
+          .hero-totals { flex-direction: row !important; flex-wrap: wrap; }
+        }
+      `}</style>
     </div>
   )
 }
