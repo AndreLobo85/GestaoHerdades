@@ -211,16 +211,24 @@ function PermissionsModal({ role, onClose }: { role: Role; onClose: () => void }
 
 function CreateRoleModal({ tenantId, existingRoles, onClose, onSaved }: { tenantId: string; existingRoles: Role[]; onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState('')
-  const [keyVal, setKeyVal] = useState('')
   const [description, setDescription] = useState('')
   const [duplicateFrom, setDuplicateFrom] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/(^_|_$)/g,'').slice(0, 32)
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setSaving(true)
+    let key = slugify(name)
+    // Ensure uniqueness against existing roles
+    if (existingRoles.some(r => r.key === key)) {
+      let i = 2
+      while (existingRoles.some(r => r.key === `${key}_${i}`)) i++
+      key = `${key}_${i}`
+    }
     const { data: newId, error: err } = await (supabase.rpc as any)('admin_upsert_role', {
-      p_tenant_id: tenantId, p_role_id: null, p_key: keyVal.trim(), p_name: name.trim(), p_description: description.trim() || null
+      p_tenant_id: tenantId, p_role_id: null, p_key: key, p_name: name.trim(), p_description: description.trim() || null
     })
     if (err) { setError(err.message); setSaving(false); return }
 
@@ -240,11 +248,7 @@ function CreateRoleModal({ tenantId, existingRoles, onClose, onSaved }: { tenant
       <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
         <div>
           <label className="text-label">Nome</label>
-          <input required value={name} onChange={e => { setName(e.target.value); if (!keyVal) setKeyVal(e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/(^_|_$)/g,'')) }} placeholder="Encarregado" className="input-field" />
-        </div>
-        <div>
-          <label className="text-label">Chave técnica (a-z, 0-9, _)</label>
-          <input required value={keyVal} onChange={e => setKeyVal(e.target.value)} placeholder="encarregado" className="input-field" pattern="^[a-z0-9_]{2,32}$" />
+          <input required value={name} onChange={e => setName(e.target.value)} placeholder="Encarregado" className="input-field" />
         </div>
         <div>
           <label className="text-label">Descrição (opcional)</label>
